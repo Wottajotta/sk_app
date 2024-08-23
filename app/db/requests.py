@@ -22,7 +22,7 @@ async def add_region(session: AsyncSession, data: dict):
     session.add(obj)
     await session.commit()
     
-# Добавляем регион в БД
+# Добавляем категорию в БД
 async def add_category(session: AsyncSession, data: dict):
     obj = Category(
         name=data["name"],
@@ -30,8 +30,8 @@ async def add_category(session: AsyncSession, data: dict):
     session.add(obj)
     await session.commit()
     
-# Добавляем регион в БД
-async def add_Series(session: AsyncSession, data: dict):
+# Добавляем серию в БД
+async def add_series(session: AsyncSession, data: dict):
     obj = Series(
         name=data["name"],
         category=data["category_id"]
@@ -39,10 +39,12 @@ async def add_Series(session: AsyncSession, data: dict):
     session.add(obj)
     await session.commit()
     
-# Добавляем регион в БД
+# Добавляем продукт в БД
 async def add_product(session: AsyncSession, data: dict):
     obj = Product(
         name=data["name"],
+        category=data["category"],
+        series=data["series"],
     )
     session.add(obj)
     await session.commit()
@@ -59,3 +61,13 @@ async def get_regions():
 async def get_categories():
     async with async_session() as session:
         return await session.scalars(select(Category))
+    
+# Достаем категории
+async def get_series():
+    async with async_session() as session:
+        return await session.scalars(select(Series))
+    
+# Достаем категории
+async def get_products():
+    async with async_session() as session:
+        return await session.scalars(select(Product))

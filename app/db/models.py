@@ -41,21 +41,15 @@ class Series(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(25), nullable=True)
-    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id", ondelete="CASCADE"), nullable=True)
-    
-    
-    category: Mapped["Category"] = relationship(backref="series")
+    category: Mapped[str] = mapped_column(String(25), nullable=True)
      
 class Product(Base):
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), nullable=True)
-    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), nullable=True)
-    series_id: Mapped[int] = mapped_column(ForeignKey("series.id", ondelete="CASCADE"), nullable=True)
-    
-    category: Mapped["Category"] = relationship(backref="product")
-    series: Mapped["Series"] = relationship(backref="product")
+    category: Mapped[str] = mapped_column(String(25), nullable=True)
+    series: Mapped[str] = mapped_column(String(25), nullable=True)
 
     
 class Ticket(Base):
@@ -65,7 +59,7 @@ class Ticket(Base):
     region: Mapped[str] = mapped_column(String(128), nullable=True)
     category: Mapped[str] = mapped_column(String(25), nullable=True)
     series: Mapped[str] = mapped_column(String(25), nullable=True)
-    product: Mapped[str] = mapped_column(String(256), nullable=True)
+    product: Mapped[str] = mapped_column(String(120), nullable=True)
     additionally: Mapped[str] = mapped_column(String(512), nullable=True)
         
     

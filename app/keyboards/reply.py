@@ -2,8 +2,12 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 
-from app.db.requests import get_regions
-
+from app.db.requests import (
+    get_regions,
+    get_categories,
+    get_series,
+    get_products,
+)
 
 # send_number = ReplyKeyboardMarkup(
 #     keyboard=[
@@ -21,6 +25,24 @@ async def region():
     keyboard = ReplyKeyboardBuilder()
     
     for region in all_regions:
-        keyboard.add(KeyboardButton(text=region.name, callback_data=f'region_{region.id}'))
+        keyboard.add(KeyboardButton(text=region.name))
         
-    return keyboard.adjust(2).as_markup()
+    return keyboard.adjust(2).as_markup(resize_keyboard=True)
+
+async def categories():
+    all_categories = await get_categories()
+    keyboard = ReplyKeyboardBuilder()
+    
+    for category in all_categories:
+        keyboard.add(KeyboardButton(text=category.name))
+        
+    return keyboard.adjust(2).as_markup(resize_keyboard=True)
+
+async def series():
+    all_series = await get_series()
+    keyboard = ReplyKeyboardBuilder()
+    
+    for series in all_series:
+        keyboard.add(KeyboardButton(text=series.name))
+        
+    return keyboard.adjust(2).as_markup(resize_keyboard=True)
