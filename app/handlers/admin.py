@@ -65,3 +65,9 @@ async def add_region_name(message: types.Message, state: FSMContext, session: As
         await state.clear()
         
 ##################################################
+
+
+
+########## FSM-добавление Категории ##########
+class AddCategory(StatesGroup):
+    ...

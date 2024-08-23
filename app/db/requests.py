@@ -21,6 +21,31 @@ async def add_region(session: AsyncSession, data: dict):
     )
     session.add(obj)
     await session.commit()
+    
+# Добавляем регион в БД
+async def add_category(session: AsyncSession, data: dict):
+    obj = Category(
+        name=data["name"],
+    )
+    session.add(obj)
+    await session.commit()
+    
+# Добавляем регион в БД
+async def add_Series(session: AsyncSession, data: dict):
+    obj = Series(
+        name=data["name"],
+        category=data["category_id"]
+    )
+    session.add(obj)
+    await session.commit()
+    
+# Добавляем регион в БД
+async def add_product(session: AsyncSession, data: dict):
+    obj = Product(
+        name=data["name"],
+    )
+    session.add(obj)
+    await session.commit()
 
 
 ########## Тут мы get, update и delete ########## 

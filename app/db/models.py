@@ -26,7 +26,7 @@ class Region(Base):
     __tablename__ = 'regions'
     
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(128), nullable=True)
+    name: Mapped[str] = mapped_column(String(50), nullable=True)
     
 
 class Category(Base):
@@ -66,7 +66,7 @@ class Ticket(Base):
     category: Mapped[str] = mapped_column(String(25), nullable=True)
     series: Mapped[str] = mapped_column(String(25), nullable=True)
     product: Mapped[str] = mapped_column(String(256), nullable=True)
-    additionally = mapped_column(BigInteger)
+    additionally: Mapped[str] = mapped_column(String(512), nullable=True)
         
     
 
