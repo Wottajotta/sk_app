@@ -46,3 +46,11 @@ async def series():
         keyboard.add(KeyboardButton(text=series.name))
         
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
+
+def get_callback_btns(*, btns):
+    keyboard = ReplyKeyboardBuilder()
+
+    for text in btns:
+        keyboard.add(KeyboardButton(text=text))
+
+    return keyboard.adjust(2).as_markup(resize_keyboard=True)

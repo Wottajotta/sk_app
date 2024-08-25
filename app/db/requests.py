@@ -1,7 +1,7 @@
 from app.db.engine import async_session
 from app.db.models import User, Region, Category, Series, Product, Ticket
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 
 ########## Тут мы set и add ########## 
@@ -34,7 +34,7 @@ async def add_category(session: AsyncSession, data: dict):
 async def add_series(session: AsyncSession, data: dict):
     obj = Series(
         name=data["name"],
-        category=data["category_id"]
+        category=data["category"]
     )
     session.add(obj)
     await session.commit()
@@ -63,6 +63,11 @@ async def get_categories():
         return await session.scalars(select(Category))
     
 # Достаем категории
+async def get_categories_name(id):
+    async with async_session() as session:
+        return await session.scalar(select(Category).where(Category.id==int(id)))
+    
+# Достаем категории
 async def get_series():
     async with async_session() as session:
         return await session.scalars(select(Series))
@@ -71,3 +76,22 @@ async def get_series():
 async def get_products():
     async with async_session() as session:
         return await session.scalars(select(Product))
+    
+# Достаем категории
+async def get_product(id):
+    async with async_session() as session:
+        return await session.scalars(select(Product).where(Product.id==int(id)))
+    
+# Достаем категории
+async def get_products_сategory(text):
+    async with async_session() as session:
+        return await session.scalars(select(Product).where(Product.category==str(text)))
+    
+async def delete_product(session: AsyncSession, product_id: int):
+    query = delete(Product).where(Product.id == product_id)
+    await session.execute(query)
+    await session.commit()
+    
+    
+async def get_ticket(session: AsyncSession):
+    return await session.scalars(select(Ticket))
