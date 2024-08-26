@@ -1,7 +1,7 @@
 from app.db.engine import async_session
 from app.db.models import User, Region, Category, Series, Product, Ticket
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, update, delete
 
 
 ########## Тут мы set и add ########## 
@@ -93,5 +93,43 @@ async def delete_product(session: AsyncSession, product_id: int):
     await session.commit()
     
     
-async def get_ticket(session: AsyncSession):
+
+
+###################### Создание заявки #######################################
+async def create_ticket(session: AsyncSession, data: dict):
+    obj = Ticket(
+        tg_id=data["user_id"],
+        region=data["region"],
+        category=data["category"],
+        series=data["series"],
+        product=data["product"],
+        additionally=data["additionally"],
+    )
+    session.add(obj)
+    await session.commit()
+       
+async def update_ticket(session: AsyncSession, product_id: int, data):
+    query = (
+        update(Product)
+        .where(Product.id == product_id)
+        .values(
+            tg_id=data["tg_id"],
+            region=data["region"],
+            category=data["category"],
+            series=data["series"],
+            product=data["product"],
+            additionally=data["additionally"],
+        )
+    )
+    await session.execute(query)
+    await session.commit()
+    
+async def get_tickets(session: AsyncSession):
     return await session.scalars(select(Ticket))
+
+# Достаем категории
+async def get_ticket(id):
+    async with async_session() as session:
+        return await session.scalars(select(Ticket).where(Ticket.id==int(id)))
+    
+    

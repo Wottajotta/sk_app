@@ -76,9 +76,11 @@ async def add_region_name(message: types.Message, state: FSMContext, session: As
     data = await state.get_data()
     try:
         await add_region(session, data)
+        await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
         await message.answer("Регион успешно добавлен!", reply_markup=await inline.back_to_menu_admin())
         await state.clear()
     except Exception as e:
+        await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
         await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu_admin())
         await state.clear()
         
@@ -119,9 +121,11 @@ async def add_category_name(message: types.Message, state: FSMContext, session: 
     data = await state.get_data()
     try:
         await add_category(session, data)
+        await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
         await message.answer("Категория успешно добавлена!", reply_markup=await inline.back_to_menu_admin())
         await state.clear()
     except Exception as e:
+        await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
         await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu_admin())
         await state.clear()
         
@@ -168,9 +172,11 @@ async def add_series_category(message: types.Message, state: FSMContext, session
     data = await state.get_data()
     try:
         await add_series(session, data)
+        await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
         await message.answer("Серия успешно добавлена!", reply_markup=await inline.back_to_menu_admin())
         await state.clear()
     except Exception as e:
+        await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
         await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu_admin())
         await state.clear()
         
@@ -181,6 +187,8 @@ class AddProduct(StatesGroup):
     name = State()
     category = State()
     series = State()
+    
+    product_for_change = None
     
     texts = {
         "AddProduct:category": "Выберите категорию заново ⬆️",
@@ -266,9 +274,11 @@ async def add_region_name(message: types.Message, state: FSMContext, session: As
     data = await state.get_data()
     try:
         await add_product(session, data)
+        await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
         await message.answer("Продукт успешно добавлен!", reply_markup=await inline.back_to_menu_admin())
         await state.clear()
     except Exception as e:
+        await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
         await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu_admin())
         await state.clear()
         

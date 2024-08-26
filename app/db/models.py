@@ -56,6 +56,7 @@ class Ticket(Base):
     __tablename__ = "tickets"
     
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tg_id = mapped_column(BigInteger)
     region: Mapped[str] = mapped_column(String(128), nullable=True)
     category: Mapped[str] = mapped_column(String(25), nullable=True)
     series: Mapped[str] = mapped_column(String(25), nullable=True)

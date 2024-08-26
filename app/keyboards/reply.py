@@ -19,6 +19,15 @@ from app.db.requests import (
 #     input_field_placeholder="Отправьте телефон по кнопке ниже"
 # )
 
+new_ticket = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="Новая заявка")
+        ]
+    ],
+    resize_keyboard=True,
+    input_field_placeholder="Начни заполнение по кнопки ниже"
+)
 
 async def region():
     all_regions = await get_regions()
@@ -46,6 +55,16 @@ async def series():
         keyboard.add(KeyboardButton(text=series.name))
         
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
+
+async def product():
+    all_products = await get_products()
+    keyboard = ReplyKeyboardBuilder()
+
+    for product in all_products:
+        keyboard.add(KeyboardButton(text=product.name))
+
+    return keyboard.adjust(2).as_markup(resize_keyboard=True)
+
 
 def get_callback_btns(*, btns):
     keyboard = ReplyKeyboardBuilder()
