@@ -21,6 +21,7 @@ from app.db.requests import (
     get_categories,
     get_series,
     get_products,
+    get_tickets_by_region,
     
 )
 
@@ -284,6 +285,8 @@ async def add_region_name(message: types.Message, state: FSMContext, session: As
         
 #############################################################################################################################
 
+
+########## НОМЕНКЛАТУРА ##########################################################################################
 @admin.callback_query(F.data==("acitve_items"))
 async def active_items(callback: types.CallbackQuery, session: AsyncSession):
    await callback.answer()
@@ -350,8 +353,8 @@ async def active_product(callback: types.CallbackQuery, session: AsyncSession):
 Категория: <strong>{product.category}</strong>\nСерия: {product.series}", 
         reply_markup=inline.get_callback_btns(
            btns={
-               "Удалить": f"delete-product_{product.id}",
                "Изменить": f"change_{product.id}",
+               "Удалить": f"delete-product_{product.id}",
            },
            sizes=(1,)
        ),
@@ -360,5 +363,34 @@ async def active_product(callback: types.CallbackQuery, session: AsyncSession):
    await callback.message.answer("Вот список активной продукции ⏫", 
                                  reply_markup=await inline.back_to_menu_admin())
    
+#############################################################################################################################
 
-       
+########## ТЕКУЩИЕ ЗАЯВКИ ##########################################################################################
+
+@admin.callback_query(F.data==("current_tickets"))
+async def current_ticket_region(callback: types.CallbackQuery, session: AsyncSession):
+    regions = await get_regions()
+    await callback.answer()
+    btns = {region.name for region in regions}
+    await callback.message.answer("Выберите регион", reply_markup=reply.get_callback_btns(btns=btns))
+
+@admin.message(F.text)
+async def get_current_ticket(message: types.Message, session: AsyncSession):
+    t_region = message.text
+    tickets = await get_tickets_by_region(t_region)
+    for ticket in tickets:
+        await message.answer(f"ЗАЯВКА №{ticket.id}\n\n\
+Продукт: <strong>{ticket.product}</strong>\n\
+Регион: <strong>{ticket.region}</strong>\n\
+Категория: <strong>{ticket.category}</strong>\nСерия: {ticket.series}\n\
+Доп. информация: <strong>{ticket.additionally}</strong>", 
+        reply_markup=inline.get_callback_btns(
+           btns={
+               "Изменить": f"change_{ticket.id}",
+               "Удалить": f"delete-product_{ticket.id}",
+           },
+           sizes=(1,)
+       ),
+        )
+    await message.answer("Вот список активных заявок ⏫", 
+                                 reply_markup=await inline.back_to_menu_admin())

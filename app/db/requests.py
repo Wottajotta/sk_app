@@ -132,4 +132,8 @@ async def get_ticket(id):
     async with async_session() as session:
         return await session.scalars(select(Ticket).where(Ticket.id==int(id)))
     
+    # Достаем категории
+async def get_tickets_by_region(region):
+    async with async_session() as session:
+        return await session.scalars(select(Ticket).where(Ticket.region==str(region)))
     
