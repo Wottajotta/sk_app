@@ -20,7 +20,8 @@ async def admin_menu():
         [InlineKeyboardButton(text='Добавить Серию ➕', callback_data='add_series')],
         [InlineKeyboardButton(text='Добавить Продукт ➕', callback_data='add_product')],
         [InlineKeyboardButton(text='Номенклатура 📦', callback_data='acitve_items')],
-        [InlineKeyboardButton(text='Текущие заявки 🧾', callback_data='current_tickets')],
+        [InlineKeyboardButton(text='Новые заявки ❗', callback_data='new_tickets')],
+        [InlineKeyboardButton(text='Заявки в работе 🧾', callback_data='current_tickets')],
         [InlineKeyboardButton(text='Поддержка 👨🏻‍💻', callback_data="support")],
     ])
 

@@ -1,4 +1,4 @@
-from sqlalchemy import DateTime, ForeignKey, String, BigInteger, func
+from sqlalchemy import DateTime, ForeignKey, String, BigInteger, func, Text
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs
 
@@ -62,8 +62,6 @@ class Ticket(Base):
     series: Mapped[str] = mapped_column(String(25), nullable=True)
     product: Mapped[str] = mapped_column(String(120), nullable=True)
     additionally: Mapped[str] = mapped_column(String(512), nullable=True)
-        
-    
-
-
+    images: Mapped[str] = mapped_column(Text, nullable=True)
+    documents: Mapped[str] = mapped_column(Text, nullable=True)
     

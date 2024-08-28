@@ -104,6 +104,8 @@ async def create_ticket(session: AsyncSession, data: dict):
         series=data["series"],
         product=data["product"],
         additionally=data["additionally"],
+        images=data["images"],
+        documents=data["documents"],
     )
     session.add(obj)
     await session.commit()
@@ -113,12 +115,13 @@ async def update_ticket(session: AsyncSession, product_id: int, data):
         update(Product)
         .where(Product.id == product_id)
         .values(
-            tg_id=data["tg_id"],
             region=data["region"],
             category=data["category"],
             series=data["series"],
             product=data["product"],
             additionally=data["additionally"],
+            images=data["images"],
+            documents=data["documents"],
         )
     )
     await session.execute(query)

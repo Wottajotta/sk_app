@@ -10,6 +10,7 @@ from common.texts import admin_contact
 
 user = Router()
 
+
 # /start
 @user.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: types.CallbackQuery):
@@ -42,7 +43,9 @@ class AddTicket(StatesGroup):
     series = State()
     product = State()
     additionally = State()
-    
+    images = State()
+    documents = State()
+
     ticket_for_change = None
  
 @user.callback_query(StateFilter(None), F.data.startswith("t-change_"))
@@ -79,6 +82,7 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
         return
     if AddTicket.ticket_for_change:
         AddTicket.ticket_for_change = None
+    await state.clear()
     await message.answer("Действия отменены", reply_markup=await inline.back_to_menu())
     
 @user.message(AddTicket.user_id, F.text)
@@ -127,6 +131,32 @@ async def add_ticket_product(message: types.Message, state: FSMContext):
 @user.message(AddTicket.additionally, F.text)
 async def add_ticket_additionally(message: types.Message, state: FSMContext, session: AsyncSession):
     await state.update_data(additionally=message.text)
+    btns = ["Без фото"]
+    await message.answer("Приложите фото", reply_markup=reply.get_callback_btns(btns=btns))
+    await state.set_state(AddTicket.images)
+    
+    
+@user.message(AddTicket.images, F.photo)
+async def add_ticket_images(message: types.Message, state: FSMContext, session: AsyncSession):
+    list_images = []
+    list_images.append(message.photo[-1].file_id)
+    await state.update_data(images=",".join(list_images))
+    btns = ["Без документов"]
+    await message.answer("Приложите документ", reply_markup=reply.get_callback_btns(btns=btns))
+    await state.set_state(AddTicket.documents)
+    
+
+@user.message(AddTicket.documents, F.document)
+async def add_ticket_document(message: types.Message, state: FSMContext, session: AsyncSession):
+    if message.text == "Без фото":
+        await state.update_data(images=None)
+    if message.text == "Без документов":
+        await state.update_data(documents=None)
+    # list_documents = []
+    if message.document:
+    #     list_documents.append(message.document.file_id) ", ".join(list_documents)
+        document = message.document.file_id
+        await state.update_data(documents=document)
     data = await state.get_data()
     try:
         await create_ticket(session, data)
@@ -135,8 +165,9 @@ async def add_ticket_additionally(message: types.Message, state: FSMContext, ses
 Наши менеджеры уже приступили к обработке, ожидайте!", reply_markup=await inline.back_to_menu())
         await state.clear()
     except Exception as e:
-        await message.answer("Неудача ❌")
+        await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
         await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu())
         await state.clear()
+
 
 
