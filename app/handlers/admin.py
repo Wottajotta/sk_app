@@ -392,5 +392,7 @@ async def get_current_ticket(message: types.Message, session: AsyncSession):
            sizes=(1,)
        ),
         )
+        await message.answer_photo(f"{ticket.images}")
+        await message.answer_document(f"{ticket.documents}")
     await message.answer("Вот список активных заявок ⏫", 
                                  reply_markup=await inline.back_to_menu_admin())
