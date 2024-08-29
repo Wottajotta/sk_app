@@ -3,21 +3,13 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 
 from app.db.requests import (
+    get_products_by_series,
     get_regions,
     get_categories,
     get_series,
     get_products,
 )
 
-# send_number = ReplyKeyboardMarkup(
-#     keyboard=[
-#         [
-#             KeyboardButton(text="Подтвердить номер", request_contact=True)
-#         ]
-#     ],
-#     resize_keyboard=True,
-#     input_field_placeholder="Отправьте телефон по кнопке ниже"
-# )
 
 new_ticket = ReplyKeyboardMarkup(
     keyboard=[
@@ -29,6 +21,19 @@ new_ticket = ReplyKeyboardMarkup(
     input_field_placeholder="Начни заполнение по кнопки ниже"
 )
 
+user_tickets = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="Все заявки"),
+            KeyboardButton(text="Новые заявки"),
+            KeyboardButton(text="Заявки в работе")
+        ]
+    ],
+    resize_keyboard=True,
+    input_field_placeholder="Выберите нужный тип заявок"
+)
+
+# Регионы
 async def region():
     all_regions = await get_regions()
     keyboard = ReplyKeyboardBuilder()
@@ -38,6 +43,7 @@ async def region():
         
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
 
+# Категории
 async def categories():
     all_categories = await get_categories()
     keyboard = ReplyKeyboardBuilder()
@@ -47,6 +53,7 @@ async def categories():
         
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
 
+# Серия
 async def series():
     all_series = await get_series()
     keyboard = ReplyKeyboardBuilder()
@@ -56,8 +63,9 @@ async def series():
         
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
 
-async def product():
-    all_products = await get_products()
+# Продукт
+async def product(series):
+    all_products = await get_products_by_series(series)
     keyboard = ReplyKeyboardBuilder()
 
     for product in all_products:
@@ -65,7 +73,7 @@ async def product():
 
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
 
-
+# Вспомогательные кнопки
 def get_callback_btns(*, btns):
     keyboard = ReplyKeyboardBuilder()
 

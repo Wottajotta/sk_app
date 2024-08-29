@@ -87,6 +87,10 @@ async def get_products_сategory(text):
     async with async_session() as session:
         return await session.scalars(select(Product).where(Product.category==str(text)))
     
+async def get_products_by_series(text):
+    async with async_session() as session:
+        return await session.scalars(select(Product).where(Product.series==str(text)))
+    
 async def delete_product(session: AsyncSession, product_id: int):
     query = delete(Product).where(Product.id == product_id)
     await session.execute(query)
@@ -110,10 +114,10 @@ async def create_ticket(session: AsyncSession, data: dict):
     session.add(obj)
     await session.commit()
        
-async def update_ticket(session: AsyncSession, product_id: int, data):
+async def update_ticket(session: AsyncSession, ticket_id: int, data):
     query = (
-        update(Product)
-        .where(Product.id == product_id)
+        update(Ticket)
+        .where(Ticket.id == ticket_id)
         .values(
             region=data["region"],
             category=data["category"],
@@ -139,4 +143,9 @@ async def get_ticket(id):
 async def get_tickets_by_region(region):
     async with async_session() as session:
         return await session.scalars(select(Ticket).where(Ticket.region==str(region)))
+    
+async def get_tickets_by_id(id):
+    async with async_session() as session:
+        return await session.scalars(select(Ticket).where(Ticket.tg_id==int(id)))
+    
     

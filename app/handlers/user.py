@@ -4,11 +4,14 @@ from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.context import FSMContext
 
-from app.db.requests import create_ticket, get_ticket
+from app.db.requests import create_ticket, get_ticket, get_tickets_by_id, update_ticket
 from app.keyboards import inline, reply
 from common.texts import admin_contact
 
 user = Router()
+
+list_images = []
+list_documents = []
 
 
 # /start
@@ -54,14 +57,13 @@ async def change_ticket_callback(
 ):
     ticket_id = callback.data.split("_")[-1]
 
-    product_for_change = await get_ticket(int(ticket_id))
+    ticket_for_change = await get_ticket(int(ticket_id))
 
-    AddTicket.ticket_for_change = product_for_change
+    AddTicket.ticket_for_change = ticket_for_change
 
     await callback.answer()
-    await callback.message.answer(
-        "Введите название товара", reply_markup=types.ReplyKeyboardRemove()
-    )
+    await callback.message.answer("Выберите регион", 
+                                  reply_markup=await reply.region())
     await state.set_state(AddTicket.region)  
    
     
@@ -116,7 +118,7 @@ async def add_ticket_series(message: types.Message, state: FSMContext):
         await state.update_data(series=AddTicket.ticket_for_change.series)
     else:
         await state.update_data(series=message.text)
-    await message.answer("Выберите продукт", reply_markup=await reply.product())
+    await message.answer("Выберите продукт", reply_markup=await reply.product(message.text))
     await state.set_state(AddTicket.product)
     
 @user.message(AddTicket.product, F.text)
@@ -131,43 +133,81 @@ async def add_ticket_product(message: types.Message, state: FSMContext):
 @user.message(AddTicket.additionally, F.text)
 async def add_ticket_additionally(message: types.Message, state: FSMContext, session: AsyncSession):
     await state.update_data(additionally=message.text)
-    btns = ["Без фото"]
-    await message.answer("Приложите фото", reply_markup=reply.get_callback_btns(btns=btns))
+    btns = ["Без фото", "Закончить фотоотчет"]
+    await message.answer("Приложите фото и нажмите на кнопку: Закончить фотоотчет", reply_markup=reply.get_callback_btns(btns=btns))
     await state.set_state(AddTicket.images)
     
     
-@user.message(AddTicket.images, F.photo)
+@user.message(AddTicket.images)
 async def add_ticket_images(message: types.Message, state: FSMContext, session: AsyncSession):
-    list_images = []
-    list_images.append(message.photo[-1].file_id)
-    await state.update_data(images=",".join(list_images))
-    btns = ["Без документов"]
-    await message.answer("Приложите документ", reply_markup=reply.get_callback_btns(btns=btns))
-    await state.set_state(AddTicket.documents)
-    
-
-@user.message(AddTicket.documents, F.document)
-async def add_ticket_document(message: types.Message, state: FSMContext, session: AsyncSession):
     if message.text == "Без фото":
         await state.update_data(images=None)
+        btns = ["Без документов", "Закончить формирование заявки"]
+        await message.answer("Приложите документ и нажмите на кнопку: Закончить формирование заявки", 
+        reply_markup=reply.get_callback_btns(btns=btns))
+        await state.set_state(AddTicket.documents)
+    
+    global list_images
+    if message.photo:
+        photo = message.photo[-1].file_id
+        list_images.append(photo) 
+    elif message.text == "Закончить фотоотчет":          
+        await state.update_data(images=', '.join(list_images))
+        btns = ["Без документов"]
+        await message.answer("Приложите документ", 
+        reply_markup=reply.get_callback_btns(btns=btns))
+        await state.set_state(AddTicket.documents)
+@user.message(AddTicket.documents)
+async def add_ticket_document(message: types.Message, state: FSMContext, session: AsyncSession):
     if message.text == "Без документов":
         await state.update_data(documents=None)
-    # list_documents = []
+    global list_documents
     if message.document:
-    #     list_documents.append(message.document.file_id) ", ".join(list_documents)
-        document = message.document.file_id
-        await state.update_data(documents=document)
-    data = await state.get_data()
-    try:
-        await create_ticket(session, data)
-        await message.answer("Успех ✅")
-        await message.answer("Заявка успешно отправлена!\n\
-Наши менеджеры уже приступили к обработке, ожидайте!", reply_markup=await inline.back_to_menu())
-        await state.clear()
-    except Exception as e:
-        await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
-        await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu())
-        await state.clear()
+        list_documents.append(message.document.file_id)
+    elif message.text == "Закончить формирование заявки":
+        await state.update_data(documents=','.join(list_documents))
+        data = await state.get_data()
+        try:
+            if AddTicket.ticket_for_change:
+                await update_ticket(session, AddTicket.ticket_for_change.id, data)
+            else:
+                await create_ticket(session, data)
+            await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
+            await message.answer("Заявка успешно отправлена!\n\
+    Наши менеджеры уже приступили к обработке, ожидайте!", reply_markup=await inline.back_to_menu())
+            await state.clear()
+        except Exception as e:
+            await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
+            await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu())
+            await state.clear()
+
+#############################################################################################################################
 
 
+############ ТЕКУЩИЕ ЗАЯВКИ ##############################################################################################
+@user.callback_query(F.data==("user_tickets"))
+async def user_tickets(callback: types.CallbackQuery, session: AsyncSession):
+    await callback.answer()
+    await callback.message.answer("Выберите статус заявки", reply_markup= reply.user_tickets)
 
+
+@user.message(F.text=="Все заявки")
+async def all_user_tickets(message: types.Message, session: AsyncSession):
+    
+    all_tickets = await get_tickets_by_id(message.from_user.id)
+    for ticket in all_tickets:
+        await message.answer(f"ЗАЯВКА №{ticket.id}\n\n\
+Регион: <strong>{ticket.region}</strong>\n\
+Продукт: <strong>{ticket.product}</strong>\n\
+Категория: <strong>{ticket.category}</strong>\n\
+Серия: {ticket.series}\n\
+Доп. информация: <strong>{ticket.additionally}</strong>", 
+reply_markup=inline.get_callback_btns(
+           btns={
+               "Показать вложения": f"media-ticket_{ticket.id}",
+               "Изменить": f"t-change_{ticket.id}",
+           },
+           sizes=(1,)
+       ),)
+    
+    await message.answer("Вот все заявки от вашего имени ⏫", reply_markup=await inline.back_to_menu())
