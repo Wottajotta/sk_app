@@ -159,15 +159,15 @@ async def add_ticket_images(message: types.Message, state: FSMContext, session: 
         await state.set_state(AddTicket.documents)
  
 async def send_ticket_to_group(bot, data):
-    region = data["region"]
+    region = str(data["region"])
     if region in group_id:
-        value = data[region]
-        await bot.send_message(chat_id=value, text=f"Новая заявка №{data.id}\n\n\
-    Регион: <strong>{data.region}</strong>\n\
-    Продукт: <strong>{data.product}</strong>\n\
-    Категория: <strong>{data.category}</strong>\n\
-    Серия: {data.series}\n\
-    Доп. информация: <strong>{data.additionally}</strong>",
+        value = group_id[region]
+        await bot.send_message(chat_id=value, text=f"❗❗❗Новая заявка❗❗❗\n\
+Регион: <strong>{data["region"]}</strong>\n\
+Продукт: <strong>{data["product"]}</strong>\n\
+Категория: <strong>{data["category"]}</strong>\n\
+Серия: {data["series"]}\n\
+Доп. информация: <strong>{data["additionally"]}</strong>",
     reply_markup=inline.get_callback_btns(btns={"Подробнее" : f"all_tickets"}))
         
 @user.message(AddTicket.documents)
