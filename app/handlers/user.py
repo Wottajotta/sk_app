@@ -7,6 +7,7 @@ from aiogram.fsm.context import FSMContext
 from app.db.requests import create_ticket, get_ticket, get_tickets_by_id, update_ticket
 from app.keyboards import inline, reply
 from common.texts import admin_contact
+from common.texts.group import group_id
 
 user = Router()
 
@@ -146,19 +147,31 @@ async def add_ticket_images(message: types.Message, state: FSMContext, session: 
         await message.answer("Приложите документ и нажмите на кнопку: Закончить формирование заявки", 
         reply_markup=reply.get_callback_btns(btns=btns))
         await state.set_state(AddTicket.documents)
-    
     global list_images
     if message.photo:
         photo = message.photo[-1].file_id
         list_images.append(photo) 
     elif message.text == "Закончить фотоотчет":          
         await state.update_data(images=', '.join(list_images))
-        btns = ["Без документов"]
-        await message.answer("Приложите документ", 
+        btns = ["Без документов", "Закончить формирование заявки"]
+        await message.answer("Приложите документ и нажмите на кнопку: Закончить формирование заявки", 
         reply_markup=reply.get_callback_btns(btns=btns))
         await state.set_state(AddTicket.documents)
+ 
+async def send_ticket_to_group(bot, data):
+    region = data["region"]
+    if region in group_id:
+        value = data[region]
+        await bot.send_message(chat_id=value, text=f"Новая заявка №{data.id}\n\n\
+    Регион: <strong>{data.region}</strong>\n\
+    Продукт: <strong>{data.product}</strong>\n\
+    Категория: <strong>{data.category}</strong>\n\
+    Серия: {data.series}\n\
+    Доп. информация: <strong>{data.additionally}</strong>",
+    reply_markup=inline.get_callback_btns(btns={"Подробнее" : f"all_tickets"}))
+        
 @user.message(AddTicket.documents)
-async def add_ticket_document(message: types.Message, state: FSMContext, session: AsyncSession):
+async def add_ticket_document(message: types.Message, state: FSMContext, session: AsyncSession, bot: Bot):
     if message.text == "Без документов":
         await state.update_data(documents=None)
     global list_documents
@@ -172,6 +185,7 @@ async def add_ticket_document(message: types.Message, state: FSMContext, session
                 await update_ticket(session, AddTicket.ticket_for_change.id, data)
             else:
                 await create_ticket(session, data)
+            await send_ticket_to_group(bot, data)
             await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
             await message.answer("Заявка успешно отправлена!\n\
     Наши менеджеры уже приступили к обработке, ожидайте!", reply_markup=await inline.back_to_menu())
