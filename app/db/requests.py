@@ -102,6 +102,7 @@ async def delete_product(session: AsyncSession, product_id: int):
 ###################### Создание заявки #######################################
 async def create_ticket(session: AsyncSession, data: dict):
     obj = Ticket(
+        status=data["status"],
         tg_id=data["user_id"],
         region=data["region"],
         category=data["category"],
@@ -119,6 +120,7 @@ async def update_ticket(session: AsyncSession, ticket_id: int, data):
         update(Ticket)
         .where(Ticket.id == ticket_id)
         .values(
+            status=data["status"],
             region=data["region"],
             category=data["category"],
             series=data["series"],
@@ -137,7 +139,7 @@ async def get_tickets(session: AsyncSession):
 # Достаем категории
 async def get_ticket(id):
     async with async_session() as session:
-        return await session.scalars(select(Ticket).where(Ticket.id==int(id)))
+        return await session.scalar(select(Ticket).where(Ticket.id==int(id)))
     
     # Достаем категории
 async def get_tickets_by_region(region):

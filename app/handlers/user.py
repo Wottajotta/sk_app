@@ -15,7 +15,7 @@ list_images = []
 list_documents = []
 
 
-# /start
+############################################### /start #####################################################################################
 @user.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: types.CallbackQuery):
     await callback.message.edit_text(f"Привет!👋\n\nЭтот бот создан для подачи и обработки региональных заявок в компании «СК УРАЛ»👨🏻‍💼\n\n\
@@ -37,8 +37,11 @@ async def help_cmd(callback: types.CallbackQuery):
     await callback.answer()
     await callback.message.answer(f"🤖 Бот-обработчик заявок создан и внедрен техническим отделом компании «СК УРАЛ»\n\n\
 👨🏻‍💻 Разработчик/ТП: {admin_contact.text}", reply_markup= await inline.back_to_menu_from_help())
+
+############################################################################################################################################   
+   
     
-########## FSM-добавление новой заявки ##########
+########## FSM-добавление новой заявки #####################################################################################################
 
 class AddTicket(StatesGroup):
     user_id = State()
@@ -90,6 +93,7 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     
 @user.message(AddTicket.user_id, F.text)
 async def add_ticket_user_id(message: types.Message, state: FSMContext):
+    await state.update_data(status="new")
     await state.update_data(user_id=int(message.from_user.id))
     await message.answer("Выберите регион", reply_markup=await reply.region())
     await state.set_state(AddTicket.region)
@@ -168,7 +172,7 @@ async def send_ticket_to_group(bot, data):
 Категория: <strong>{data["category"]}</strong>\n\
 Серия: {data["series"]}\n\
 Доп. информация: <strong>{data["additionally"]}</strong>",
-    reply_markup=inline.get_callback_btns(btns={"Подробнее" : f"all_tickets"}))
+    reply_markup=inline.get_callback_btns(btns={"Подробнее" : f"new_tickets"}))
         
 @user.message(AddTicket.documents)
 async def add_ticket_document(message: types.Message, state: FSMContext, session: AsyncSession, bot: Bot):
