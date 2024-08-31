@@ -93,7 +93,7 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     
 @user.message(AddTicket.user_id, F.text)
 async def add_ticket_user_id(message: types.Message, state: FSMContext):
-    await state.update_data(status="new")
+    await state.update_data(status="Новая")
     await state.update_data(user_id=int(message.from_user.id))
     await message.answer("Выберите регион", reply_markup=await reply.region())
     await state.set_state(AddTicket.region)
@@ -182,7 +182,7 @@ async def add_ticket_document(message: types.Message, state: FSMContext, session
     if message.document:
         list_documents.append(message.document.file_id)
     elif message.text == "Закончить формирование заявки":
-        await state.update_data(documents=','.join(list_documents))
+        await state.update_data(documents=', '.join(list_documents))
         data = await state.get_data()
         try:
             if AddTicket.ticket_for_change:
@@ -215,6 +215,53 @@ async def all_user_tickets(message: types.Message, session: AsyncSession):
     all_tickets = await get_tickets_by_id(message.from_user.id)
     for ticket in all_tickets:
         await message.answer(f"ЗАЯВКА №{ticket.id}\n\n\
+Статус: <strong>{ticket.status}</strong>\n\
+Регион: <strong>{ticket.region}</strong>\n\
+Продукт: <strong>{ticket.product}</strong>\n\
+Категория: <strong>{ticket.category}</strong>\n\
+Серия: {ticket.series}\n\
+Доп. информация: <strong>{ticket.additionally}</strong>", 
+reply_markup=inline.get_callback_btns(
+           btns={
+               "Показать вложения": f"media-ticket_{ticket.id}",
+               "Изменить": f"t-change_{ticket.id}",
+           },
+           sizes=(1,)
+       ),)
+    
+    await message.answer("Вот все заявки от вашего имени ⏫", reply_markup=await inline.back_to_menu())
+    
+@user.message(F.text=="Новые заявки")
+async def all_user_tickets(message: types.Message, session: AsyncSession):
+    
+    all_tickets = await get_tickets_by_id(message.from_user.id)
+    for ticket in all_tickets:
+        if ticket.status == "Новая":
+            await message.answer(f"ЗАЯВКА №{ticket.id}\n\n\
+Статус: <strong>{ticket.status}</strong>\n\
+Регион: <strong>{ticket.region}</strong>\n\
+Продукт: <strong>{ticket.product}</strong>\n\
+Категория: <strong>{ticket.category}</strong>\n\
+Серия: {ticket.series}\n\
+Доп. информация: <strong>{ticket.additionally}</strong>", 
+reply_markup=inline.get_callback_btns(
+           btns={
+               "Показать вложения": f"media-ticket_{ticket.id}",
+               "Изменить": f"t-change_{ticket.id}",
+           },
+           sizes=(1,)
+       ),)
+    
+    await message.answer("Вот все заявки от вашего имени ⏫", reply_markup=await inline.back_to_menu())
+    
+@user.message(F.text=="Заявки в работе")
+async def all_user_tickets(message: types.Message, session: AsyncSession):
+    
+    all_tickets = await get_tickets_by_id(message.from_user.id)
+    for ticket in all_tickets:
+        if ticket.status == "В работе":
+            await message.answer(f"ЗАЯВКА №{ticket.id}\n\n\
+Статус: <strong>{ticket.status}</strong>\n\
 Регион: <strong>{ticket.region}</strong>\n\
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\

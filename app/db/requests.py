@@ -146,8 +146,23 @@ async def get_tickets_by_region(region):
     async with async_session() as session:
         return await session.scalars(select(Ticket).where(Ticket.region==str(region)))
     
+    
 async def get_tickets_by_id(id):
     async with async_session() as session:
         return await session.scalars(select(Ticket).where(Ticket.tg_id==int(id)))
     
+async def update_ticket_status(session: AsyncSession, ticket_id, status: str):
+    query = (
+        update(Ticket)
+        .where(Ticket.id == int(ticket_id))
+        .values(
+            status=status,
+        )
+    )
+    await session.execute(query)
+    await session.commit()
     
+async def delete_ticket(session: AsyncSession, ticket_id):
+    query = delete(Ticket).where(Ticket.id == int(ticket_id))
+    await session.execute(query)
+    await session.commit()
