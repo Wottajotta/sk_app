@@ -136,12 +136,19 @@ async def update_ticket(session: AsyncSession, ticket_id: int, data):
 async def get_tickets(session: AsyncSession):
     return await session.scalars(select(Ticket))
 
-# Достаем категории
+# Достаем последнюю запись в БД
+async def get_last_ticket():
+    async with async_session() as session:
+        result = await session.execute(select(Ticket).order_by(Ticket.id.desc()).limit(1))
+        last_ticket = result.scalar_one_or_none()
+        return last_ticket
+    
+# Достаем заявку
 async def get_ticket(id):
     async with async_session() as session:
         return await session.scalar(select(Ticket).where(Ticket.id==int(id)))
     
-    # Достаем категории
+# Достаем заявки по региону
 async def get_tickets_by_region(region):
     async with async_session() as session:
         return await session.scalars(select(Ticket).where(Ticket.region==str(region)))
@@ -161,7 +168,18 @@ async def update_ticket_status(session: AsyncSession, ticket_id, status: str):
     )
     await session.execute(query)
     await session.commit()
-    
+  
+async def add_finished_documents(session: AsyncSession, ticket_id, doc_id: str):
+    query = (
+        update(Ticket)
+        .where(Ticket.id == int(ticket_id))
+        .values(
+            finish_documents = doc_id,
+        )
+    )
+    await session.execute(query)
+    await session.commit()
+  
 async def delete_ticket(session: AsyncSession, ticket_id):
     query = delete(Ticket).where(Ticket.id == int(ticket_id))
     await session.execute(query)

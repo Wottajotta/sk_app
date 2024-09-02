@@ -4,7 +4,7 @@ from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.context import FSMContext
 
-from app.db.requests import create_ticket, get_ticket, get_tickets_by_id, update_ticket
+from app.db.requests import create_ticket, get_last_ticket, get_ticket, get_tickets_by_id, update_ticket
 from app.keyboards import inline, reply
 from common.texts import admin_contact
 from common.texts.group import group_id
@@ -163,16 +163,17 @@ async def add_ticket_images(message: types.Message, state: FSMContext, session: 
         await state.set_state(AddTicket.documents)
  
 async def send_ticket_to_group(bot, data):
-    region = str(data["region"])
+    ticket = await get_last_ticket()
+    region = ticket.region
     if region in group_id:
         value = group_id[region]
         await bot.send_message(chat_id=value, text=f"❗❗❗Новая заявка❗❗❗\n\
-Регион: <strong>{data["region"]}</strong>\n\
-Продукт: <strong>{data["product"]}</strong>\n\
-Категория: <strong>{data["category"]}</strong>\n\
-Серия: {data["series"]}\n\
-Доп. информация: <strong>{data["additionally"]}</strong>",
-    reply_markup=inline.get_callback_btns(btns={"Подробнее" : f"new_tickets"}))
+Регион: <strong>{ticket.region}</strong>\n\
+Продукт: <strong>{ticket.product}</strong>\n\
+Категория: <strong>{ticket.category}</strong>\n\
+Серия: {ticket.series}\n\
+Доп. информация: <strong>{ticket.additionally}</strong>",
+    reply_markup=inline.get_callback_btns(btns={"Подробнее" : f"new-ticket_{ticket.id}"}))
         
 @user.message(AddTicket.documents)
 async def add_ticket_document(message: types.Message, state: FSMContext, session: AsyncSession, bot: Bot):

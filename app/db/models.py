@@ -65,4 +65,5 @@ class Ticket(Base):
     additionally: Mapped[str] = mapped_column(String(512), nullable=True)
     images: Mapped[str] = mapped_column(Text, nullable=True)
     documents: Mapped[str] = mapped_column(Text, nullable=True)
+    finish_documents: Mapped[str] = mapped_column(Text, nullable=True)
     
