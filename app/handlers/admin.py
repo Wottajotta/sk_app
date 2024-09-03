@@ -19,6 +19,7 @@ from app.db.requests import (
     get_products_сategory,
     get_regions,
     get_categories,
+    get_regions_by_id,
     get_series,
     get_products,
     get_tickets_by_region,
@@ -365,32 +366,79 @@ async def active_product(callback: types.CallbackQuery, session: AsyncSession):
 
 ###################################################### ТЕКУЩИЕ ЗАЯВКИ #######################################################
 
-@admin.callback_query(F.data==("current_tickets"))
-async def current_ticket_region(callback: types.CallbackQuery, session: AsyncSession):
+async def get_tickets(callback, status):
+    
+    t_region_id = callback.data.split("_")[-1]
+    t_region = await get_regions_by_id(t_region_id)
+    tickets = await get_tickets_by_region(t_region.name)
+    
+    for ticket in tickets:
+        if status == "Новая":
+            btns={
+            "Показать вложения" : f"ticket-media_{ticket.id}",
+            "Принять в работу" : f"new-ticket-to-progress_{ticket.id}",
+            "Удалить" : f"new-ticket-delete_{ticket.id}",
+            }
+        elif status == "В работе":
+            btns={
+            "Показать вложения" : f"ticket-media_{ticket.id}",
+            "Завершить" : f"progress-ticket-to-finished_{ticket.id}",
+            }
+        
+        elif status == "В работе":
+            btns={
+            "Показать вложения" : f"ticket-media_{ticket.id}",
+            "Завершить" : f"progress-ticket-to-finished_{ticket.id}",
+            }
+        
+        if ticket.status == status:
+            await callback.answer()
+            await callback.message.answer(f"Заявка <strong>№{ticket.id}</strong>\n\
+Статус: <strong>{ticket.status}</strong>\n\
+Регион: <strong>{ticket.region}</strong>\n\
+Продукт: <strong>{ticket.product}</strong>\n\
+Категория: <strong>{ticket.category}</strong>\n\
+Серия: <strong>{ticket.series}</strong>\n\
+Доп. информация: <strong>{ticket.additionally}</strong>",
+    reply_markup=inline.get_callback_btns(btns=btns,
+    sizes=(1,)
+    ),),
+        elif ticket==None:
+                await callback.message.answer("В данный момент нет новых заявок\n\n\
+Выберите или введите команду /progress, для проосмотра заявок в работе", 
+reply_markup=await inline.back_to_menu_admin())  
+    
+    await callback.answer()            
+    await callback.message.answer("Вот список активных заявок ⏫", 
+                                 reply_markup=await inline.back_to_menu_admin())
+
+
+async def get_region_btns(callback, text):
     regions = await get_regions()
     await callback.answer()
-    btns = {region.name for region in regions}
-    await callback.message.answer("Выберите регион", reply_markup=reply.get_callback_btns(btns=btns))
+    btns = {f"{region.name}": f"{text}region_{region.id}" for region in regions}
+    await callback.message.answer("Выберите регион", reply_markup=inline.get_callback_btns(btns=btns))
 
-@admin.message(F.text)
-async def get_current_ticket(message: types.Message, session: AsyncSession):
-    t_region = message.text
-    tickets = await get_tickets_by_region(t_region)
-    for ticket in tickets:
-        await message.answer(f"ЗАЯВКА №{ticket.id}\n\n\
-Продукт: <strong>{ticket.product}</strong>\n\
-Регион: <strong>{ticket.region}</strong>\n\
-Категория: <strong>{ticket.category}</strong>\nСерия: {ticket.series}\n\
-Доп. информация: <strong>{ticket.additionally}</strong>", 
-        reply_markup=inline.get_callback_btns(
-           btns={
-               "Изменить": f"change_{ticket.id}",
-               "Удалить": f"delete-product_{ticket.id}",
-           },
-           sizes=(1,)
-       ),
-        )
-        await message.answer_photo(f"{ticket.images}")
-        await message.answer_document(f"{ticket.documents}")
-    await message.answer("Вот список активных заявок ⏫", 
-                                 reply_markup=await inline.back_to_menu_admin())
+
+
+@admin.callback_query(F.data.startswith("tickets_"))
+async def current_ticket_region(callback: types.CallbackQuery, session: AsyncSession):
+    region_id = callback.data.split("_")[-1]
+    if region_id =="new":
+       await get_region_btns(callback=callback, text="nt-")
+    elif region_id =="progress":
+        await get_region_btns(callback=callback, text="pt-")
+    elif region_id =="finished":
+        await get_region_btns(callback=callback, text="ft-")
+
+@admin.callback_query(F.data.startswith("nt-region_"))
+async def get_current_ticket(callback: types.CallbackQuery, session: AsyncSession):
+    await get_tickets(callback=callback, status="Новая")
+    
+@admin.callback_query(F.data.startswith("pt-region_"))
+async def get_current_ticket(callback: types.CallbackQuery, session: AsyncSession):
+    await get_tickets(callback=callback, status="В работе")
+    
+@admin.callback_query(F.data.startswith("ft-region_"))
+async def get_current_ticket(callback: types.CallbackQuery, session: AsyncSession):
+    await get_tickets(callback=callback, status="Завершена")

@@ -56,6 +56,10 @@ async def add_product(session: AsyncSession, data: dict):
 async def get_regions():
     async with async_session() as session:
         return await session.scalars(select(Region))
+    
+async def get_regions_by_id(id):
+    async with async_session() as session:
+        return await session.scalar(select(Region).where(Region.id==int(id)))
 
 # Достаем категории
 async def get_categories():

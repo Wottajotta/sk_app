@@ -16,13 +16,14 @@ async def user_menu():
 #Админ-клавиатура
 async def admin_menu():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='Новые заявки ❗', callback_data='tickets_new')],
+        [InlineKeyboardButton(text='Заявки в работе 🧾', callback_data='tickets_progress')],
+        [InlineKeyboardButton(text='Завершенные заявки ✅', callback_data='tickets_finished')],
         [InlineKeyboardButton(text='Добавить регионы ➕', callback_data='add_regions')],
         [InlineKeyboardButton(text='Добавить Категорию ➕', callback_data='add_category')],
         [InlineKeyboardButton(text='Добавить Серию ➕', callback_data='add_series')],
         [InlineKeyboardButton(text='Добавить Продукт ➕', callback_data='add_product')],
         [InlineKeyboardButton(text='Номенклатура 📦', callback_data='acitve_items')],
-        [InlineKeyboardButton(text='Новые заявки ❗', callback_data='new_tickets')],
-        [InlineKeyboardButton(text='Заявки в работе 🧾', callback_data='current_tickets')],
         [InlineKeyboardButton(text='Поддержка 👨🏻‍💻', callback_data="support")],
     ])
 
