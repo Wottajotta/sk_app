@@ -8,6 +8,7 @@ from app.db.requests import (
     get_categories,
     get_series,
     get_products,
+    get_series_by_categories,
 )
 
 
@@ -26,7 +27,9 @@ user_tickets = ReplyKeyboardMarkup(
         [
             KeyboardButton(text="Все заявки"),
             KeyboardButton(text="Новые заявки"),
-            KeyboardButton(text="Заявки в работе")
+            KeyboardButton(text="Отредактированные заявки"),
+            KeyboardButton(text="Заявки в работе"),
+            KeyboardButton(text="Завершенные заявки"),
         ]
     ],
     resize_keyboard=True,
@@ -54,8 +57,8 @@ async def categories():
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
 
 # Серия
-async def series():
-    all_series = await get_series()
+async def series(category):
+    all_series = await get_series_by_categories(category)
     keyboard = ReplyKeyboardBuilder()
     
     for series in all_series:

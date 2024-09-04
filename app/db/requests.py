@@ -77,6 +77,11 @@ async def get_series():
         return await session.scalars(select(Series))
     
 # Достаем категории
+async def get_series_by_categories(category):
+    async with async_session() as session:
+        return await session.scalars(select(Series).where(Series.category==category))
+    
+# Достаем категории
 async def get_products():
     async with async_session() as session:
         return await session.scalars(select(Product))

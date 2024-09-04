@@ -114,7 +114,7 @@ async def add_ticket_category(message: types.Message, state: FSMContext):
         await state.update_data(category=AddTicket.ticket_for_change.category)
     else:
         await state.update_data(category=message.text)
-    await message.answer("Выберите серию", reply_markup=await reply.series())
+    await message.answer("Выберите серию", reply_markup=await reply.series(message.text))
     await state.set_state(AddTicket.series)
     
 @user.message(AddTicket.series, F.text)

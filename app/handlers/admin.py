@@ -22,6 +22,7 @@ from app.db.requests import (
     get_regions_by_id,
     get_series,
     get_products,
+    get_ticket,
     get_tickets_by_region,
     
 )
@@ -373,7 +374,7 @@ async def get_tickets(callback, status):
     tickets = await get_tickets_by_region(t_region.name)
     
     for ticket in tickets:
-        if status == "Новая":
+        if status == "Новая" or status == "Отредактировано":
             btns={
             "Показать вложения" : f"ticket-media_{ticket.id}",
             "Принять в работу" : f"new-ticket-to-progress_{ticket.id}",
@@ -442,3 +443,12 @@ async def get_current_ticket(callback: types.CallbackQuery, session: AsyncSessio
 @admin.callback_query(F.data.startswith("ft-region_"))
 async def get_current_ticket(callback: types.CallbackQuery, session: AsyncSession):
     await get_tickets(callback=callback, status="Завершена")
+    
+@admin.callback_query(F.data.startswith("progress-ticket-to-finished_"))
+async def finish_ticket(callback: types.CallbackQuery, session: AsyncSession):
+    fticket_id = callback.data.split("_")[-1]
+    ticket = await get_ticket(fticket_id)
+    btns = ["Без закрывающих документов"]
+    await callback.answer()
+    await callback.message.answer(f"Приложите закрывающие документы по заявке №{ticket.id}\n\
+На продукт {ticket.product}\n", reply_markup=reply.get_callback_btns(btns=btns))

@@ -50,6 +50,17 @@ class Product(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=True)
     category: Mapped[str] = mapped_column(String(25), nullable=True)
     series: Mapped[str] = mapped_column(String(25), nullable=True)
+    equipment: Mapped[str] = mapped_column(String(128), nullable=True)
+    
+
+class Additionally(Base):
+    __tablename__ = "additionally"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(50), nullable=True)
+    value: Mapped[str] = mapped_column(String(128), nullable=True)
+    category: Mapped[str] = mapped_column(String(25), nullable=True)
+    
 
     
 class Ticket(Base):
@@ -62,6 +73,7 @@ class Ticket(Base):
     category: Mapped[str] = mapped_column(String(25), nullable=True)
     series: Mapped[str] = mapped_column(String(25), nullable=True)
     product: Mapped[str] = mapped_column(String(120), nullable=True)
+    equipment: Mapped[str] = mapped_column(String(128), nullable=True)
     additionally: Mapped[str] = mapped_column(String(512), nullable=True)
     images: Mapped[str] = mapped_column(Text, nullable=True)
     documents: Mapped[str] = mapped_column(Text, nullable=True)
