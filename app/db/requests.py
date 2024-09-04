@@ -1,10 +1,10 @@
 from app.db.engine import async_session
-from app.db.models import User, Region, Category, Series, Product, Ticket
+from app.db.models import User, Region, Category, Series, Additionally, Product, Ticket
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 
 
-########## Тут мы set и add ########## 
+#################################### Тут мы set и add #############################################
  
 # Добавляем пользователя в БД
 async def set_user(tg_id):
@@ -48,9 +48,20 @@ async def add_product(session: AsyncSession, data: dict):
     )
     session.add(obj)
     await session.commit()
+    
+async def add_additionally(session: AsyncSession, data: dict):
+    obj = Additionally(
+        name=data["name"],
+        value=data["value"],
+        category=data["category"],
+        series=data["series"],
+    )
+    session.add(obj)
+    await session.commit()
+    
+###################################################################################################
 
-
-########## Тут мы get, update и delete ########## 
+############################## Тут мы get, update и delete ########################################
 
 # Достаем регионы
 async def get_regions():
@@ -100,15 +111,13 @@ async def get_products_by_series(text):
     async with async_session() as session:
         return await session.scalars(select(Product).where(Product.series==str(text)))
     
-async def delete_product(session: AsyncSession, product_id: int):
-    query = delete(Product).where(Product.id == product_id)
-    await session.execute(query)
-    await session.commit()
-    
-    
+async def get_additionally_by_category(category):
+    async with async_session() as session:
+        return await session.scalars(select(Additionally).where(Additionally.category==str(category)))
+ 
+###################################################################################################   
 
-
-###################### Создание заявки #######################################
+##################################### Работа с заявками ###########################################
 async def create_ticket(session: AsyncSession, data: dict):
     obj = Ticket(
         status=data["status"],
@@ -188,8 +197,34 @@ async def add_finished_documents(session: AsyncSession, ticket_id, doc_id: str):
     )
     await session.execute(query)
     await session.commit()
-  
+ 
+###################################################################################################   
+    
+    
+##################################### Удаление позиций ############################################
+
+async def delete_category(session: AsyncSession, product_id: int):
+    query = delete(Category).where(Category.id == product_id)
+    await session.execute(query)
+    await session.commit()
+    
+async def delete_series(session: AsyncSession, product_id: int):
+    query = delete(Series).where(Series.id == product_id)
+    await session.execute(query)
+    await session.commit()
+    
+async def delete_product(session: AsyncSession, product_id: int):
+    query = delete(Product).where(Product.id == product_id)
+    await session.execute(query)
+    await session.commit()
+    
+async def delete_additionally(session: AsyncSession, product_id: int):
+    query = delete(Additionally).where(Additionally.id == product_id)
+    await session.execute(query)
+    await session.commit()
+    
 async def delete_ticket(session: AsyncSession, ticket_id):
     query = delete(Ticket).where(Ticket.id == int(ticket_id))
     await session.execute(query)
     await session.commit()
+    

@@ -11,8 +11,6 @@ from common.texts.group import group_id
 
 user_group = Router()
 
-Fticket_id = ""
-Fticket_doc = []
 
 user_group.message.filter(ChatTypeFilter(["group", "supergroup"]))
 user_group.edited_message.filter(ChatTypeFilter(["group", "supergroup"]))
@@ -79,7 +77,7 @@ async def get_one_new_ticket(callback, ticket_id):
     )
 )
 
-
+##################################### Статус заявок ###############################################
 @user_group.message(Command("new"))
 async def new_tickets_from_command(message: types.Message, bot: Bot):
     await get_tickets(message, bot, status="Новая")
@@ -170,27 +168,3 @@ async def delete_new_ticket(callback: types.CallbackQuery, bot: Bot, session: As
     await callback.message.edit_text(f"Заявка №{ticket_id} удалена")
     await bot.send_message(chat_id=group_id[ticket.region], text=f"Заявка №{ticket_id} удалена")
     
-    
-# @user_group.callback_query(F.data.startswith("progress-ticket-to-finished_"))
-# async def finished_progress_ticket(callback: types.CallbackQuery, bot: Bot, session: AsyncSession):
-#     await callback.answer()
-#     ticket_id = callback.data.split("_")[1]
-#     Fticekt_id = ticket_id
-#     ticket = await get_ticket(ticket_id)
-#     await callback.message.answer(f"Приложите завершающие документы к заявке №{ticket.id}")
-    
-    
-# @user_group.message(Fticket_id)
-# async def close_ticket(message: types.Message, bot: Bot, session: AsyncSession):
-#     global Fticket_doc
-    
-#     ticket = await get_ticket(Fticket_id)
-#     if message.document:
-#         Fticket_doc.append(message.document.file_id)
-#     await add_finished_documents(session, Fticket_id, ", ".join(Fticket_doc))
-#     await update_ticket_status(session, Fticket_id, "Завершена")
-#     await message.answer(f"Заявка №{Fticket_id} завершена")
-#     Fticket_doc = []
-#     Fticket_id = None
-
-###################################################################################################

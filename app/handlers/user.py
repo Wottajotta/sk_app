@@ -4,7 +4,7 @@ from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.context import FSMContext
 
-from app.db.requests import create_ticket, get_last_ticket, get_ticket, get_tickets_by_id, update_ticket
+from app.db.requests import create_ticket, get_last_ticket, get_series, get_ticket, get_tickets_by_id, update_ticket
 from app.keyboards import inline, reply
 from common.texts import admin_contact
 from common.texts.group import group_id
@@ -66,6 +66,7 @@ async def change_ticket_callback(
     AddTicket.ticket_for_change = ticket_for_change
 
     await callback.answer()
+    await state.update_data(status="Отредактировано")
     await callback.message.answer("Выберите регион", 
                                   reply_markup=await reply.region())
     await state.set_state(AddTicket.region)  
@@ -98,7 +99,6 @@ async def add_ticket_user_id(message: types.Message, state: FSMContext):
     await message.answer("Выберите регион", reply_markup=await reply.region())
     await state.set_state(AddTicket.region)
     
-    
 @user.message(AddTicket.region, F.text)  
 async def add_ticket_region(message: types.Message, state: FSMContext):
     if message.text == "." and AddTicket.ticket_for_change:
@@ -107,6 +107,12 @@ async def add_ticket_region(message: types.Message, state: FSMContext):
         await state.update_data(region=message.text)
     await message.answer("Выберите категорию", reply_markup=await reply.categories())
     await state.set_state(AddTicket.category)
+    
+# Хендлер для отлова некорректных вводов для состояния region
+@user.message(AddTicket.region)
+async def add_ticket_region2(message: types.Message, state: FSMContext):
+    await message.answer("Вы ввели недопустимые данные, выберите регион!", 
+                         reply_markup=await reply.region())
     
 @user.message(AddTicket.category, F.text)
 async def add_ticket_category(message: types.Message, state: FSMContext):
@@ -117,6 +123,12 @@ async def add_ticket_category(message: types.Message, state: FSMContext):
     await message.answer("Выберите серию", reply_markup=await reply.series(message.text))
     await state.set_state(AddTicket.series)
     
+# Хендлер для отлова некорректных вводов для состояния category
+@user.message(AddTicket.category)
+async def add_ticket_category2(message: types.Message, state: FSMContext):
+    await message.answer("Вы ввели недопустимые данные, выберите категорию!", 
+                         reply_markup=await reply.categories())
+    
 @user.message(AddTicket.series, F.text)
 async def add_ticket_series(message: types.Message, state: FSMContext):
     if message.text == "." and AddTicket.ticket_for_change:
@@ -126,15 +138,24 @@ async def add_ticket_series(message: types.Message, state: FSMContext):
     await message.answer("Выберите продукт", reply_markup=await reply.product(message.text))
     await state.set_state(AddTicket.product)
     
+# Хендлер для отлова некорректных вводов для состояния series
+@user.message(AddTicket.series)
+async def add_ticket_series2(message: types.Message, state: FSMContext):
+    await message.answer("Вы ввели недопустимые данные, выберите категорию!", 
+                         reply_markup=await reply.series())
+    
 @user.message(AddTicket.product, F.text)
 async def add_ticket_product(message: types.Message, state: FSMContext):
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(product=AddTicket.ticket_for_change.product)
-    else:
+    elif str(message.text) in [series.name for series in await get_series()]:
         await state.update_data(product=message.text)
-    await message.answer("Введите дополнительную информацию", reply_markup=types.ReplyKeyboardRemove())
-    await state.set_state(AddTicket.additionally)
-    
+        await message.answer("Введите дополнительную информацию", reply_markup=types.ReplyKeyboardRemove())
+        await state.set_state(AddTicket.additionally)
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите продукт используя кнопки ниже!")
+
+#TODO Переделать выбор доп. опций    
 @user.message(AddTicket.additionally, F.text)
 async def add_ticket_additionally(message: types.Message, state: FSMContext, session: AsyncSession):
     await state.update_data(additionally=message.text)
@@ -162,12 +183,12 @@ async def add_ticket_images(message: types.Message, state: FSMContext, session: 
         reply_markup=reply.get_callback_btns(btns=btns))
         await state.set_state(AddTicket.documents)
  
-async def send_ticket_to_group(bot, data):
+async def send_ticket_to_group(bot, data, text):
     ticket = await get_last_ticket()
     region = ticket.region
     if region in group_id:
         value = group_id[region]
-        await bot.send_message(chat_id=value, text=f"❗❗❗Новая заявка❗❗❗\n\
+        await bot.send_message(chat_id=value, text=f"❗❗❗{text}❗❗❗\n\
 Регион: <strong>{ticket.region}</strong>\n\
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\
@@ -177,8 +198,6 @@ async def send_ticket_to_group(bot, data):
         
 @user.message(AddTicket.documents)
 async def add_ticket_document(message: types.Message, state: FSMContext, session: AsyncSession, bot: Bot):
-    if message.text == "Без документов":
-        await state.update_data(documents=None)
     global list_documents
     if message.document:
         list_documents.append(message.document.file_id)
@@ -187,17 +206,21 @@ async def add_ticket_document(message: types.Message, state: FSMContext, session
         data = await state.get_data()
         try:
             if AddTicket.ticket_for_change:
+                
                 await update_ticket(session, AddTicket.ticket_for_change.id, data)
+                await send_ticket_to_group(bot, data, data["status"], "Заявка отредактирована")
             else:
                 await create_ticket(session, data)
-            await send_ticket_to_group(bot, data)
+                await send_ticket_to_group(bot, data, data["status"], "Новая заявка")
             await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
             await message.answer("Заявка успешно отправлена!\n\
-    Наши менеджеры уже приступили к обработке, ожидайте!", reply_markup=await inline.back_to_menu())
+Наши менеджеры уже приступили к обработке, ожидайте!", 
+reply_markup=await inline.back_to_menu())
             await state.clear()
         except Exception as e:
             await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
-            await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu())
+            await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", 
+                                 reply_markup=await inline.back_to_menu())
             await state.clear()
 
 #############################################################################################################################

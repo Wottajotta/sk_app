@@ -14,6 +14,7 @@ from app.db.requests import (
     add_product,
     add_series,
     delete_product,
+    get_additionally_by_category,
     get_categories_name,
     get_product,
     get_products_сategory,
@@ -363,6 +364,34 @@ async def active_product(callback: types.CallbackQuery, session: AsyncSession):
    await callback.message.answer("Вот список активной продукции ⏫", 
                                  reply_markup=await inline.back_to_menu_admin())
    
+@admin.callback_query(F.data==("active_additionally"))
+async def active_additionally(callback: types.CallbackQuery, session: AsyncSession):
+    categories = await get_categories()
+    await callback.answer()
+    btns = {category.name : f'a-category_{category.id}' for category in categories}
+    await callback.answer()
+    await callback.message.edit_text("Выберите категорию", reply_markup=inline.get_callback_btns(btns=btns))
+ 
+@admin.callback_query(F.data.startswith("a-category_"))
+async def active_additionally2(callback: types.CallbackQuery, session: AsyncSession):
+    category_id = callback.data.split("_")[-1]
+    category = await get_categories_name(int(category_id))
+    additionallies = await get_additionally_by_category(category)
+    for additionally in additionallies:
+        await callback.message.answer(f"Наименование: <strong>{additionally.name}</strong>\n\
+Категория: <strong>{additionally.category}</strong>\n\
+Доступные значения:\n<strong>{additionally.value}</strong>",
+        reply_markup=inline.get_callback_btns(
+           btns={
+               "Удалить": f"delete-additionally_{additionally.id}",
+           },
+           sizes=(1,)
+       ),
+        )
+    
+
+
+   
 #############################################################################################################################
 
 ###################################################### ТЕКУЩИЕ ЗАЯВКИ #######################################################
@@ -452,3 +481,6 @@ async def finish_ticket(callback: types.CallbackQuery, session: AsyncSession):
     await callback.answer()
     await callback.message.answer(f"Приложите закрывающие документы по заявке №{ticket.id}\n\
 На продукт {ticket.product}\n", reply_markup=reply.get_callback_btns(btns=btns))
+    
+    
+######################################## Удаление #################################################

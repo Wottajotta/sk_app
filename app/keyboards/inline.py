@@ -35,6 +35,7 @@ async def active_items():
         [InlineKeyboardButton(text='Категория 🗂️', callback_data='active_category')],
         [InlineKeyboardButton(text='Серия 🗂️', callback_data='active_series')],
         [InlineKeyboardButton(text='Продукция 📦', callback_data='active_product')],
+        [InlineKeyboardButton(text='Доп. опции 🧰', callback_data='active_additionally')],
     ])
 
     return keyboard

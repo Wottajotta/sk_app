@@ -3,9 +3,6 @@ from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs
 
 
-from typing import List
-
-
 class Base(DeclarativeBase):
     created: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
     updated: Mapped[DateTime] = mapped_column(
@@ -58,9 +55,9 @@ class Additionally(Base):
     
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(50), nullable=True)
-    value: Mapped[str] = mapped_column(String(128), nullable=True)
+    value: Mapped[str] = mapped_column(String(256), nullable=True)
     category: Mapped[str] = mapped_column(String(25), nullable=True)
-    
+    series: Mapped[str] = mapped_column(String(25), nullable=True)
 
     
 class Ticket(Base):
@@ -75,6 +72,7 @@ class Ticket(Base):
     product: Mapped[str] = mapped_column(String(120), nullable=True)
     equipment: Mapped[str] = mapped_column(String(128), nullable=True)
     additionally: Mapped[str] = mapped_column(String(512), nullable=True)
+    not_exist: Mapped[str] = mapped_column(Text, nullable=True)
     images: Mapped[str] = mapped_column(Text, nullable=True)
     documents: Mapped[str] = mapped_column(Text, nullable=True)
     finish_documents: Mapped[str] = mapped_column(Text, nullable=True)
