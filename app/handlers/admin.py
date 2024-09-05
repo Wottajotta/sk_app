@@ -451,7 +451,7 @@ async def get_current_ticket(callback: types.CallbackQuery, session: AsyncSessio
 async def finish_ticket(callback: types.CallbackQuery, session: AsyncSession, state: FSMContext):
     fticket_id = callback.data.split("_")[-1]
     ticket = await get_ticket(fticket_id)
-    btns = ["Без закрывающих документов"]
+    btns = ["Без закрывающих документов", "Закончить формирование заявки"]
     await callback.answer()
     await callback.message.answer(f"Приложите закрывающие документы по заявке №{ticket.id}\n\
 На продукт {ticket.product}\n", reply_markup=reply.get_callback_btns(btns=btns))
@@ -461,23 +461,24 @@ async def finish_ticket(callback: types.CallbackQuery, session: AsyncSession, st
 @admin.message(FinishDoc.doc_id)
 async def finish_ticket_doc(message: types.Message, state: FSMContext, session: AsyncSession, bot: Bot):
     global list_documents
-    ticket_id = data["ticket_id"]
+    data = await state.get_data()
+    ticket_id = data.get("ticket_id")
     ticket = await get_ticket(ticket_id)
     if message.document:
         list_documents.append(message.document.file_id)
     elif message.text == "Закончить формирование заявки" or message.text == "Без закрывающих документов":
         if message.text == "Без закрывающих документов":
-            await state.update_data(documents=None)
+            await state.update_data(doc_id=None)
         elif message.text == "Закончить формирование заявки":
-            await state.update_data(documents=', '.join(list_documents))
-        state.update_data(status="Завершена")
-        data = await state.get_data()
+            await state.update_data(doc_id=', '.join(list_documents))
+        await state.update_data(status="Завершена")
+        data_f = await state.get_data()
         try:
-            await finish_ticket(session, ticket_id, data)
+            await finish_ticket(session, int(ticket_id), data_f)
             await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
             await message.answer("Заявка успешно завершена!", reply_markup=await inline.back_to_menu_admin())
-            await bot.send_message(chat_id=ticket.tg_id, text=f"✅ Ваша заявка №{ticket.id} на продукт {ticket.product} успешно завершена!\n\
-Чтобы посмотреть завершающие документы, нажми на кнопку ниже 👇🏻", reply_markup=inline.get_callback_btns(btns={"Показать закрывающие документы": f"ticket-media_{ticket.id}"}))
+            await bot.send_message(chat_id=int(ticket.tg_id), text=f"✅ Ваша заявка №{ticket.id} на продукт {ticket.product} успешно завершена!\n\
+Чтобы посмотреть завершающие документы, нажми на кнопку ниже 👇🏻", reply_markup=inline.get_callback_btns(btns={"Показать закрывающие документы": f"f-ticket-media_{ticket.id}"}))
             await state.clear()
         except Exception as e:
             await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())

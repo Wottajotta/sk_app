@@ -4,6 +4,7 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 from app.db.requests import (
     get_additionally_by_category,
+    get_additionally_by_name,
     get_products_by_series,
     get_regions,
     get_categories,
@@ -87,10 +88,12 @@ async def additionally_name(category):
 
 async def additionally_value(name):
     all_additionally = await get_additionally_by_name(name)
-    keyboard = ReplyKeyboardBuilder()
+    data = "".join([add for add in all_additionally])
+    data = data.split(", ")
     
-    for additionally in all_additionally:
-        keyboard.add(KeyboardButton(text=additionally.name))
+    keyboard = ReplyKeyboardBuilder()
+    for additionally in data:
+        keyboard.add(KeyboardButton(text=additionally))
         
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
 

@@ -71,7 +71,7 @@ async def get_one_new_ticket(callback, ticket_id):
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\
 Серия: <strong>{ticket.series}</strong>\n\
-Доп. информация: <strong>{ticket.additionally}</strong>",
+Доп. информация: <strong>{ticket.additionally}{ticket.additionally_value}</strong>",
     reply_markup=inline.get_callback_btns(btns=btns,
     sizes=(1,)
     )
@@ -136,8 +136,8 @@ async def get_tickets_media(callback: types.CallbackQuery, bot: Bot):
     if not media_photos:
         # Если нет фото, отправляем уведомление
         await bot.send_message(chat_id, f"Нет фото для отправки по заявке №{ticket.id}")
-    if not media_photos:
-        # Если нет фото, отправляем уведомление
+    if not media_documents:
+        # Если нет документов, отправляем уведомление
         await bot.send_message(chat_id, f"Нет документов для отправки по заявке №{ticket.id}")
     if not media_documents and not media_photos:
         # Если нет медиа, отправляем уведомление

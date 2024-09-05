@@ -105,7 +105,7 @@ async def get_series():
 # Достаем категории
 async def get_series_by_categories(category):
     async with async_session() as session:
-        return await session.scalars(select(Series).where(Series.category==category))
+        return await session.scalars(select(Series).where(Series.category==str(category)))
     
 # Достаем категории
 async def get_products():
@@ -127,9 +127,14 @@ async def get_products_by_series(text):
         return await session.scalars(select(Product).where(Product.series==str(text)))
     
 # Достаем доп. опции
+
+async def get_additionally():
+    async with async_session() as session:
+        return await session.scalars(select(Additionally))
+
 async def get_additionally_by_name(name):
     async with async_session() as session:
-        return await session.scalars(select(Additionally).where(Additionally.name==str(name)))
+        return await session.scalar(select(Additionally.value).where(Additionally.name==str(name)))
     
 async def get_additionally_by_category(category):
     async with async_session() as session:
@@ -147,6 +152,8 @@ async def create_ticket(session: AsyncSession, data: dict):
         series=data["series"],
         product=data["product"],
         additionally=data["additionally"],
+        additionally_value=data["additionally_value"],
+        not_exist=data["not_exist"],
         images=data["images"],
         documents=data["documents"],
     )
@@ -164,6 +171,8 @@ async def update_ticket(session: AsyncSession, ticket_id: int, data):
             series=data["series"],
             product=data["product"],
             additionally=data["additionally"],
+            additionally_value=data["additionally_value"],
+            not_exist=data["not_exist"],
             images=data["images"],
             documents=data["documents"],
         )

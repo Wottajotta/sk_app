@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InputMediaPhoto, InputMediaDocument
 
-from app.db.requests import create_ticket, get_additionally_by_category, get_last_ticket, get_products, get_series, get_ticket, get_tickets_by_id, update_ticket
+from app.db.requests import create_ticket, get_additionally, get_additionally_by_category, get_additionally_by_name, get_categories, get_last_ticket, get_products, get_products_by_series, get_regions, get_series, get_series_by_categories, get_ticket, get_tickets_by_id, update_ticket
 from app.handlers.user_group import get_tickets_media
 from app.keyboards import inline, reply
 from common.texts import admin_contact
@@ -53,6 +53,7 @@ class AddTicket(StatesGroup):
     product = State()
     additionally = State()
     additionally_value = State()
+    not_exist = State()
     images = State()
     documents = State()
 
@@ -106,75 +107,102 @@ async def add_ticket_user_id(message: types.Message, state: FSMContext):
 async def add_ticket_region(message: types.Message, state: FSMContext):
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(region=AddTicket.ticket_for_change.region)
-    else:
+    elif str(message.text) in [region.name for region in await get_regions()]:
         await state.update_data(region=message.text)
-    await message.answer("Выберите категорию", reply_markup=await reply.categories())
-    await state.set_state(AddTicket.category)
-    
-# Хендлер для отлова некорректных вводов для состояния region
-@user.message(AddTicket.region)
-async def add_ticket_region2(message: types.Message, state: FSMContext):
-    await message.answer("Вы ввели недопустимые данные, выберите регион!", 
-                         reply_markup=await reply.region())
+        await message.answer("Выберите категорию", reply_markup=await reply.categories())
+        await state.set_state(AddTicket.category)
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите регион, используя кнопки ниже!")
+
     
 @user.message(AddTicket.category, F.text)
 async def add_ticket_category(message: types.Message, state: FSMContext):
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(category=AddTicket.ticket_for_change.category)
-    else:
+    elif str(message.text) in [category.name for category in await get_categories()]:
         await state.update_data(category=message.text)
-    await message.answer("Выберите серию", reply_markup=await reply.series(message.text))
-    await state.set_state(AddTicket.series)
-    
-# Хендлер для отлова некорректных вводов для состояния category
-@user.message(AddTicket.category)
-async def add_ticket_category2(message: types.Message, state: FSMContext):
-    await message.answer("Вы ввели недопустимые данные, выберите категорию!", 
-                         reply_markup=await reply.categories(message.text))
-    
+        await message.answer("Выберите серию", reply_markup=await reply.series(message.text))
+        await state.set_state(AddTicket.series)
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите категорию, используя кнопки ниже!")
+
 @user.message(AddTicket.series, F.text)
 async def add_ticket_series(message: types.Message, state: FSMContext):
+    data = await state.get_data()
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(series=AddTicket.ticket_for_change.series)
-    else:
+    elif str(message.text) in [series.name for series in await get_series_by_categories(data.get("category"))]:
         await state.update_data(series=message.text)
-    await message.answer("Выберите продукт", reply_markup=await reply.product(message.text))
-    await state.set_state(AddTicket.product)
-    
-# Хендлер для отлова некорректных вводов для состояния series
-@user.message(AddTicket.series)
-async def add_ticket_series2(message: types.Message, state: FSMContext):
-    await message.answer("Вы ввели недопустимые данные, выберите категорию!", 
-                         reply_markup=await reply.series(message.text))
-    
+        await message.answer("Выберите продукт", reply_markup=await reply.product(message.text))
+        await state.set_state(AddTicket.product)
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите серию, используя кнопки ниже!")
+       
 @user.message(AddTicket.product, F.text)
 async def add_ticket_product(message: types.Message, state: FSMContext):
+    data = await state.get_data()
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(product=AddTicket.ticket_for_change.product)
-    elif str(message.text) in [product.name for product in await get_products()]:
+    elif str(message.text) in [product.name for product in await get_products_by_series(data.get("series"))]:
         await state.update_data(product=message.text)
-        await message.answer("Выберите доп. опции", reply_markup=await reply.additionally_name())
+        await message.answer("Выберите доп. опции", reply_markup=await reply.additionally_name(data.get("category")))
         await state.set_state(AddTicket.additionally)
     else:
-        await message.answer("Вы ввели недопустимые данные, выберите продукт используя кнопки ниже!")
+        await message.answer("Вы ввели недопустимые данные, выберите продукт, используя кнопки ниже!")
 
 #TODO Переделать выбор доп. опций    
 @user.message(AddTicket.additionally, F.text)
 async def add_ticket_additionally(message: types.Message, state: FSMContext, session: AsyncSession):
+    data = await state.get_data()
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(additionally=AddTicket.ticket_for_change.additionally)
-    additionallies = await get_additionally_by_category(state.get_data("category"))
-    await state.update_data(additionally=message.text)
-    btns = ["Без фото", "Закончить фотоотчет"]
-    await message.answer("Приложите фото и нажмите на кнопку: Закончить фотоотчет", reply_markup=reply.get_callback_btns(btns=btns))
-    await state.set_state(AddTicket.images)
-    
+    elif str(message.text) in [additionally.name for additionally in await get_additionally_by_category(data.get("category"))]:
+        additionallies = await get_additionally_by_category(data.get("category"))
+        await state.update_data(additionally=message.text)
+        await message.answer("Выберите значение доп. опции", 
+                             reply_markup=await reply.additionally_value(message.text))
+        await state.set_state(AddTicket.additionally_value)
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите доп. опции, используя кнопки ниже!")
+ 
+@user.message(AddTicket.additionally_value, F.text)
+async def add_ticket_additionally_value(message: types.Message, state: FSMContext, session: AsyncSession):
+    data = await state.get_data()
+    all_additionally = await get_additionally_by_name(data.get("additionally"))
+    additionally_value_data = "".join([add for add in all_additionally])
+    additionally_value_data = additionally_value_data.split(", ")
+    if message.text == "." and AddTicket.ticket_for_change:
+        await state.update_data(additionally=AddTicket.ticket_for_change.additionally)
+    elif str(message.text) in [additionally for additionally in additionally_value_data]:
+        await state.update_data(additionally_value=message.text)
+        await message.answer("Напишите комментарий к заявке или введите цифру 1 для пропуска", 
+                            reply_markup=types.ReplyKeyboardRemove())
+        await state.set_state(AddTicket.not_exist)  
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите значение доп. опции, используя кнопки ниже!")
+        
+@user.message(AddTicket.not_exist, F.text)
+async def add_ticket_not_exist(message: types.Message, state: FSMContext, session: AsyncSession):
+    if message.text == "1":
+        await state.update_data(not_exist="")
+        btns = ["Без фото", "Закончить фотоотчет"]
+        await message.answer("Приложите фото и нажмите на кнопку: Закончить фотоотчет",
+                            reply_markup=reply.get_callback_btns(btns=btns))
+        await state.set_state(AddTicket.images)
+    elif message.text and message.text != "1":
+        await state.update_data(not_exist=message.text)
+        btns = ["Без фото", "Закончить фотоотчет"]
+        await message.answer("Приложите фото и нажмите на кнопку: Закончить фотоотчет",
+                                reply_markup=reply.get_callback_btns(btns=btns))
+        await state.set_state(AddTicket.images)
+    else:
+        await message.answer("Вы ввели недопустимые данные, введите комментарий к заявке или введите цифру 1 для пропуска!")
     
 @user.message(AddTicket.images)
 async def add_ticket_images(message: types.Message, state: FSMContext, session: AsyncSession):
     if message.text == "Без фото":
         await state.update_data(images=None)
-        btns = ["Без документов", "Закончить формирование заявки"]
+        btns = ["Закончить формирование заявки"]
         await message.answer("Приложите документ и нажмите на кнопку: Закончить формирование заявки", 
         reply_markup=reply.get_callback_btns(btns=btns))
         await state.set_state(AddTicket.documents)
@@ -184,12 +212,14 @@ async def add_ticket_images(message: types.Message, state: FSMContext, session: 
         list_images.append(photo) 
     elif message.text == "Закончить фотоотчет":          
         await state.update_data(images=', '.join(list_images))
-        btns = ["Без документов", "Закончить формирование заявки"]
+        btns = ["Закончить формирование заявки"]
         await message.answer("Приложите документ и нажмите на кнопку: Закончить формирование заявки", 
         reply_markup=reply.get_callback_btns(btns=btns))
         await state.set_state(AddTicket.documents)
+    else:
+        await message.answer("Вы ввели недопустимые данные, прикрепите фото!")
  
-async def send_ticket_to_group(bot, data, text):
+async def send_ticket_to_group(bot, text):
     ticket = await get_last_ticket()
     region = ticket.region
     if region in group_id:
@@ -199,7 +229,7 @@ async def send_ticket_to_group(bot, data, text):
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\
 Серия: {ticket.series}\n\
-Доп. информация: <strong>{ticket.additionally}</strong>",
+Доп. информация: <strong>{ticket.additionally}{ticket.additionally_value}</strong>",
     reply_markup=inline.get_callback_btns(btns={"Подробнее" : f"new-ticket_{ticket.id}"}))
         
 @user.message(AddTicket.documents)
@@ -212,12 +242,11 @@ async def add_ticket_document(message: types.Message, state: FSMContext, session
         data = await state.get_data()
         try:
             if AddTicket.ticket_for_change:
-                
                 await update_ticket(session, AddTicket.ticket_for_change.id, data)
-                await send_ticket_to_group(bot, data, data["status"], "Заявка отредактирована")
+                await send_ticket_to_group(bot, "Заявка отредактирована")
             else:
                 await create_ticket(session, data)
-                await send_ticket_to_group(bot, data, data["status"], "Новая заявка")
+                await send_ticket_to_group(bot, "Новая заявка")
             await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
             await message.answer("Заявка успешно отправлена!\n\
 Наши менеджеры уже приступили к обработке, ожидайте!", 
@@ -228,6 +257,8 @@ reply_markup=await inline.back_to_menu())
             await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", 
                                  reply_markup=await inline.back_to_menu())
             await state.clear()
+    else:
+        await message.answer("Вы ввели недопустимые данные, прикрепите документы!")
 
 #############################################################################################################################
 
@@ -253,7 +284,7 @@ async def all_user_tickets(message: types.Message, session: AsyncSession):
 Доп. информация: <strong>{ticket.additionally}</strong>", 
 reply_markup=inline.get_callback_btns(
            btns={
-               "Показать вложения": f"media-ticket_{ticket.id}",
+               "Показать вложения": f"p-ticket-media_{ticket.id}",
                "Изменить": f"t-change_{ticket.id}",
            },
            sizes=(1,)
@@ -303,7 +334,7 @@ async def all_user_tickets(message: types.Message, session: AsyncSession):
 Доп. информация: <strong>{ticket.additionally}</strong>", 
 reply_markup=inline.get_callback_btns(
            btns={
-               "Показать вложения": f"ticket-media_{ticket.id}",
+               "Показать вложения": f"p-ticket-media_{ticket.id}",
                "Изменить": f"t-change_{ticket.id}",
            },
            sizes=(1,)
@@ -331,7 +362,6 @@ async def get_ticket_media(callback: types.CallbackQuery, bot: Bot):
     # Создаем список медиа объектов для отправки
     media_photos = []
     media_documents = []
-
     # Добавляем фото в медиа группу
     for photo_id in photo_ids:
         media_photos.append(InputMediaPhoto(media=photo_id))
@@ -339,17 +369,29 @@ async def get_ticket_media(callback: types.CallbackQuery, bot: Bot):
     for doc_id in document_ids:
         media_documents.append(InputMediaDocument(media=doc_id))
     # Проверяем, есть ли медиа для отправки
-    if media_photos or media_documents:
+    if media_photos:
         # Отправляем медиа группу
-        await bot.send_media_group(chat_id=chat_id, media=media_photos + media_documents)
-        await bot.send_message(chat_id, f"Медиа к заявке №{ticket.id}")
-    if not media_photos and not media_documents:
+        await bot.send_media_group(chat_id=chat_id, media=media_photos)
+        await bot.send_message(chat_id, f"Фотографии к заявке №{ticket.id}")
+    if media_documents:
+        # Отправляем медиа группу
+        await bot.send_media_group(chat_id=chat_id, media=media_documents)
+        await bot.send_message(chat_id, f"Документы к заявке №{ticket.id}", 
+                               reply_markup=await inline.back_to_menu())
+    if not media_photos:
+        # Если нет фото, отправляем уведомление
+        await bot.send_message(chat_id, f"Нет фото для отправки по заявке №{ticket.id}")
+    if not media_documents:
+        # Если нет фото, отправляем уведомление
+        await bot.send_message(chat_id, f"Нет документов для отправки по заявке №{ticket.id}",
+                               reply_markup=await inline.back_to_menu())
+    if not media_documents and not media_photos:
         # Если нет медиа, отправляем уведомление
-        await bot.send_message(chat_id, f"Нет медиа для отправки по заявке №{ticket.id}", reply_markup=await inline.back_to_menu())   
+        await bot.send_message(chat_id, f"Нет медиа для отправки по заявке №{ticket.id}")
  
 ########
     
-@user.callback_query(F.data.startswith("ticket-media_"))
+@user.callback_query(F.data.startswith("f-ticket-media_"))
 async def get_finish_ticket_media(callback: types.CallbackQuery, bot: Bot):
     
     await callback.answer()
