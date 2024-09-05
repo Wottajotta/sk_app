@@ -100,7 +100,7 @@ async def new_tickets_from_callback(callback: types.CallbackQuery, bot: Bot):
   
 ################################## Вложение к заявке ##############################################
 @user_group.callback_query(F.data.startswith("ticket-media_"))
-async def get_new_ticket_media(callback: types.CallbackQuery, bot: Bot):
+async def get_tickets_media(callback: types.CallbackQuery, bot: Bot):
     
     await callback.answer()
     

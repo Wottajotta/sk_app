@@ -3,8 +3,10 @@ from aiogram.filters import CommandStart, Command, StateFilter
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.context import FSMContext
+from aiogram.types import InputMediaPhoto, InputMediaDocument
 
-from app.db.requests import create_ticket, get_last_ticket, get_series, get_ticket, get_tickets_by_id, update_ticket
+from app.db.requests import create_ticket, get_additionally_by_category, get_last_ticket, get_products, get_series, get_ticket, get_tickets_by_id, update_ticket
+from app.handlers.user_group import get_tickets_media
 from app.keyboards import inline, reply
 from common.texts import admin_contact
 from common.texts.group import group_id
@@ -50,6 +52,7 @@ class AddTicket(StatesGroup):
     series = State()
     product = State()
     additionally = State()
+    additionally_value = State()
     images = State()
     documents = State()
 
@@ -127,7 +130,7 @@ async def add_ticket_category(message: types.Message, state: FSMContext):
 @user.message(AddTicket.category)
 async def add_ticket_category2(message: types.Message, state: FSMContext):
     await message.answer("Вы ввели недопустимые данные, выберите категорию!", 
-                         reply_markup=await reply.categories())
+                         reply_markup=await reply.categories(message.text))
     
 @user.message(AddTicket.series, F.text)
 async def add_ticket_series(message: types.Message, state: FSMContext):
@@ -142,15 +145,15 @@ async def add_ticket_series(message: types.Message, state: FSMContext):
 @user.message(AddTicket.series)
 async def add_ticket_series2(message: types.Message, state: FSMContext):
     await message.answer("Вы ввели недопустимые данные, выберите категорию!", 
-                         reply_markup=await reply.series())
+                         reply_markup=await reply.series(message.text))
     
 @user.message(AddTicket.product, F.text)
 async def add_ticket_product(message: types.Message, state: FSMContext):
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(product=AddTicket.ticket_for_change.product)
-    elif str(message.text) in [series.name for series in await get_series()]:
+    elif str(message.text) in [product.name for product in await get_products()]:
         await state.update_data(product=message.text)
-        await message.answer("Введите дополнительную информацию", reply_markup=types.ReplyKeyboardRemove())
+        await message.answer("Выберите доп. опции", reply_markup=await reply.additionally_name())
         await state.set_state(AddTicket.additionally)
     else:
         await message.answer("Вы ввели недопустимые данные, выберите продукт используя кнопки ниже!")
@@ -158,6 +161,9 @@ async def add_ticket_product(message: types.Message, state: FSMContext):
 #TODO Переделать выбор доп. опций    
 @user.message(AddTicket.additionally, F.text)
 async def add_ticket_additionally(message: types.Message, state: FSMContext, session: AsyncSession):
+    if message.text == "." and AddTicket.ticket_for_change:
+        await state.update_data(additionally=AddTicket.ticket_for_change.additionally)
+    additionallies = await get_additionally_by_category(state.get_data("category"))
     await state.update_data(additionally=message.text)
     btns = ["Без фото", "Закончить фотоотчет"]
     await message.answer("Приложите фото и нажмите на кнопку: Закончить фотоотчет", reply_markup=reply.get_callback_btns(btns=btns))
@@ -226,7 +232,7 @@ reply_markup=await inline.back_to_menu())
 #############################################################################################################################
 
 
-############ ТЕКУЩИЕ ЗАЯВКИ ##############################################################################################
+################################################### ТЕКУЩИЕ ЗАЯВКИ ##########################################################
 @user.callback_query(F.data==("user_tickets"))
 async def user_tickets(callback: types.CallbackQuery, session: AsyncSession):
     await callback.answer()
@@ -254,7 +260,9 @@ reply_markup=inline.get_callback_btns(
        ),)
     
     await message.answer("Вот все заявки от вашего имени ⏫", reply_markup=await inline.back_to_menu())
-    
+
+########
+   
 @user.message(F.text=="Новые заявки")
 async def all_user_tickets(message: types.Message, session: AsyncSession):
     
@@ -270,14 +278,16 @@ async def all_user_tickets(message: types.Message, session: AsyncSession):
 Доп. информация: <strong>{ticket.additionally}</strong>", 
 reply_markup=inline.get_callback_btns(
            btns={
-               "Показать вложения": f"media-ticket_{ticket.id}",
+               "Показать вложения": f"ticket-media_{ticket.id}",
                "Изменить": f"t-change_{ticket.id}",
            },
            sizes=(1,)
        ),)
     
     await message.answer("Вот все заявки от вашего имени ⏫", reply_markup=await inline.back_to_menu())
-    
+ 
+######## 
+   
 @user.message(F.text=="Заявки в работе")
 async def all_user_tickets(message: types.Message, session: AsyncSession):
     
@@ -293,10 +303,78 @@ async def all_user_tickets(message: types.Message, session: AsyncSession):
 Доп. информация: <strong>{ticket.additionally}</strong>", 
 reply_markup=inline.get_callback_btns(
            btns={
-               "Показать вложения": f"media-ticket_{ticket.id}",
+               "Показать вложения": f"ticket-media_{ticket.id}",
                "Изменить": f"t-change_{ticket.id}",
            },
            sizes=(1,)
        ),)
     
     await message.answer("Вот все заявки от вашего имени ⏫", reply_markup=await inline.back_to_menu())
+    
+########
+    
+@user.callback_query(F.data.startswith("ticket-media_"))
+async def get_ticket_media(callback: types.CallbackQuery, bot: Bot):
+
+    await callback.answer()
+    chat_id = callback.message.chat.id
+    ticket_id = callback.data.split("_")[1]
+    ticket = await get_ticket(ticket_id)
+
+    photos = ticket.images
+    documents = ticket.documents
+
+    # Разделяем строки с ID на отдельные элементы, если строки не пустые
+    photo_ids = photos.split(", ") if photos else []
+    document_ids = documents.split(", ") if documents else []
+
+    # Создаем список медиа объектов для отправки
+    media_photos = []
+    media_documents = []
+
+    # Добавляем фото в медиа группу
+    for photo_id in photo_ids:
+        media_photos.append(InputMediaPhoto(media=photo_id))
+    # Добавляем документы в медиа группу
+    for doc_id in document_ids:
+        media_documents.append(InputMediaDocument(media=doc_id))
+    # Проверяем, есть ли медиа для отправки
+    if media_photos or media_documents:
+        # Отправляем медиа группу
+        await bot.send_media_group(chat_id=chat_id, media=media_photos + media_documents)
+        await bot.send_message(chat_id, f"Медиа к заявке №{ticket.id}")
+    if not media_photos and not media_documents:
+        # Если нет медиа, отправляем уведомление
+        await bot.send_message(chat_id, f"Нет медиа для отправки по заявке №{ticket.id}", reply_markup=await inline.back_to_menu())   
+ 
+########
+    
+@user.callback_query(F.data.startswith("ticket-media_"))
+async def get_finish_ticket_media(callback: types.CallbackQuery, bot: Bot):
+    
+    await callback.answer()
+    
+    chat_id = callback.message.chat.id
+    ticket_id = callback.data.split("_")[1]
+    ticket = await get_ticket(ticket_id)
+    
+    documents = ticket.finish_documents
+
+    # Разделяем строки с ID на отдельные элементы, если строки не пустые
+    document_ids = documents.split(", ") if documents else []
+
+    # Создаем список медиа объектов для отправки
+    media_documents = []
+    # Добавляем документы в медиа группу
+    for doc_id in document_ids:
+        media_documents.append(InputMediaDocument(media=doc_id))
+    # Проверяем, есть ли медиа для отправки
+    if media_documents:
+        # Отправляем медиа группу
+        await bot.send_media_group(chat_id=chat_id, media=media_documents)
+        await bot.send_message(chat_id, f"Документы к заявке №{ticket.id}")
+    if not media_documents:
+        # Если нет документов, отправляем уведомление
+        await bot.send_message(chat_id, f"Нет документов для отправки по заявке №{ticket.id}", reply_markup=await inline.back_to_menu())
+
+#############################################################################################################################

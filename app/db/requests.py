@@ -45,16 +45,31 @@ async def add_product(session: AsyncSession, data: dict):
         name=data["name"],
         category=data["category"],
         series=data["series"],
+        equipment=data["equipment"],
     )
+
     session.add(obj)
+    await session.commit()
+    
+async def update_product(session: AsyncSession, ticket_id: int, data):
+    query = (
+        update(Product)
+        .where(Product.id == ticket_id)
+        .values(
+            name=data["name"],
+            category=data["category"],
+            series=data["series"],
+            equipment=data["equipment"],
+        )
+    )
+    await session.execute(query)
     await session.commit()
     
 async def add_additionally(session: AsyncSession, data: dict):
     obj = Additionally(
+        category=data["category"],
         name=data["name"],
         value=data["value"],
-        category=data["category"],
-        series=data["series"],
     )
     session.add(obj)
     await session.commit()
@@ -80,7 +95,7 @@ async def get_categories():
 # Достаем категории
 async def get_categories_name(id):
     async with async_session() as session:
-        return await session.scalar(select(Category).where(Category.id==int(id)))
+        return await session.scalar(select(Category.name).where(Category.id==int(id)))
     
 # Достаем категории
 async def get_series():
@@ -102,7 +117,7 @@ async def get_product(id):
     async with async_session() as session:
         return await session.scalars(select(Product).where(Product.id==int(id)))
     
-# Достаем категории
+# Достаем продукт
 async def get_products_сategory(text):
     async with async_session() as session:
         return await session.scalars(select(Product).where(Product.category==str(text)))
@@ -110,6 +125,11 @@ async def get_products_сategory(text):
 async def get_products_by_series(text):
     async with async_session() as session:
         return await session.scalars(select(Product).where(Product.series==str(text)))
+    
+# Достаем доп. опции
+async def get_additionally_by_name(name):
+    async with async_session() as session:
+        return await session.scalars(select(Additionally).where(Additionally.name==str(name)))
     
 async def get_additionally_by_category(category):
     async with async_session() as session:
@@ -146,6 +166,18 @@ async def update_ticket(session: AsyncSession, ticket_id: int, data):
             additionally=data["additionally"],
             images=data["images"],
             documents=data["documents"],
+        )
+    )
+    await session.execute(query)
+    await session.commit()
+    
+async def finish_ticket(session: AsyncSession, ticket_id: int, data):
+    query = (
+        update(Ticket)
+        .where(Ticket.id == ticket_id)
+        .values(
+            status=data["status"],
+            finish_documents=data["finish_documents"],
         )
     )
     await session.execute(query)

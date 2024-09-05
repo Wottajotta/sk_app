@@ -3,6 +3,7 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 
 from app.db.requests import (
+    get_additionally_by_category,
     get_products_by_series,
     get_regions,
     get_categories,
@@ -24,13 +25,12 @@ new_ticket = ReplyKeyboardMarkup(
 
 user_tickets = ReplyKeyboardMarkup(
     keyboard=[
-        [
-            KeyboardButton(text="Все заявки"),
-            KeyboardButton(text="Новые заявки"),
-            KeyboardButton(text="Отредактированные заявки"),
-            KeyboardButton(text="Заявки в работе"),
-            KeyboardButton(text="Завершенные заявки"),
-        ]
+        
+        [KeyboardButton(text="Все заявки")],
+        [KeyboardButton(text="Новые заявки")],
+        [KeyboardButton(text="Отредактированные заявки")],
+        [KeyboardButton(text="Заявки в работе")],
+        [KeyboardButton(text="Завершенные заявки")],
     ],
     resize_keyboard=True,
     input_field_placeholder="Выберите нужный тип заявок"
@@ -74,6 +74,24 @@ async def product(series):
     for product in all_products:
         keyboard.add(KeyboardButton(text=product.name))
 
+    return keyboard.adjust(2).as_markup(resize_keyboard=True)
+
+async def additionally_name(category):
+    all_additionally = await get_additionally_by_category(category)
+    keyboard = ReplyKeyboardBuilder()
+    
+    for additionally in all_additionally:
+        keyboard.add(KeyboardButton(text=additionally.name))
+        
+    return keyboard.adjust(2).as_markup(resize_keyboard=True)
+
+async def additionally_value(name):
+    all_additionally = await get_additionally_by_name(name)
+    keyboard = ReplyKeyboardBuilder()
+    
+    for additionally in all_additionally:
+        keyboard.add(KeyboardButton(text=additionally.name))
+        
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
 
 # Вспомогательные кнопки

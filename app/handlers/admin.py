@@ -1,4 +1,4 @@
-from aiogram import Router, types, F
+from aiogram import Bot, Router, types, F
 from aiogram.filters import CommandStart, Command, StateFilter, Filter
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +9,7 @@ from common.texts import ticket_texts
 from app.filters.chat_types import ChatTypeFilter, AdminProtect
 
 from app.db.requests import (
+    add_additionally,
     add_region,
     add_category,
     add_product,
@@ -25,16 +26,19 @@ from app.db.requests import (
     get_products,
     get_ticket,
     get_tickets_by_region,
+    update_product,
     
 )
 
 
+list_additionally = []
+list_documents = []
+
 admin = Router()
 admin.message.filter(ChatTypeFilter(["private"]), AdminProtect())
 
-# Классы для FSM
-class AddRegion(StatesGroup):
-    name = State()
+
+############################################ Старт/back ########################################################################
 
 @admin.callback_query(F.data==("back_to_panel"))
 async def back_to_panel(callback: types.CallbackQuery):
@@ -48,10 +52,13 @@ async def admin_menu(message: types.Message):
     await message.answer(f"Привет, {message.from_user.first_name}!\n\n\
 Это админ-панель, внизу ты найдешь все необходимое для настройки бота, удачи!", 
 reply_markup=await inline.admin_menu())
-    
-    
+   
+################################################################################################################################    
 
-########## FSM-добавление регионов ##########
+############################################ FSM-добавление регионов ###########################################################
+class AddRegion(StatesGroup):
+    name = State()
+
 @admin.callback_query(F.data==("add_regions"))
 async def add_regions(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
     await callback.answer()
@@ -189,6 +196,7 @@ class AddProduct(StatesGroup):
     name = State()
     category = State()
     series = State()
+    equipment = State()
     
     product_for_change = None
     
@@ -267,17 +275,26 @@ async def add_product_category(message: types.Message, state: FSMContext, sessio
 @admin.message(AddProduct.category, F.text)
 async def add_product_series(message: types.Message, state: FSMContext, session: AsyncSession):
     await state.update_data(category=message.text)
-    await message.answer("Выберите серию", reply_markup=await reply.series())
+    await message.answer("Выберите серию", reply_markup=await reply.series(message.text))
     await state.set_state(AddProduct.series)
     
 @admin.message(AddProduct.series, F.text)
-async def add_region_name(message: types.Message, state: FSMContext, session: AsyncSession):
+async def add_product_equipment(message: types.Message, state: FSMContext, session: AsyncSession):
     await state.update_data(series=message.text)
+    await message.answer("Укажите комплектацию", reply_markup=types.ReplyKeyboardRemove())
+    await state.set_state(AddProduct.equipment)
+    
+@admin.message(AddProduct.equipment, F.text)
+async def add_region_name(message: types.Message, state: FSMContext, session: AsyncSession):
+    await state.update_data(equipment=message.text)
     data = await state.get_data()
     try:
-        await add_product(session, data)
+        if AddProduct.product_for_change:
+            await update_product(session, AddProduct.product_for_change.id, data)
+        else:
+            await add_product(session, data)
         await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
-        await message.answer("Продукт успешно добавлен!", reply_markup=await inline.back_to_menu_admin())
+        await message.answer("Продукт успешно добавлен/отредактирован!", reply_markup=await inline.back_to_menu_admin())
         await state.clear()
     except Exception as e:
         await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
@@ -286,115 +303,72 @@ async def add_region_name(message: types.Message, state: FSMContext, session: As
         
 #############################################################################################################################
 
+############################################### FSM-добавление доп. опций ###################################################
 
-################################################### НОМЕНКЛАТУРА ############################################################
-@admin.callback_query(F.data==("acitve_items"))
-async def active_items(callback: types.CallbackQuery, session: AsyncSession):
-   await callback.answer()
-   await callback.message.answer("Какой именно раздел вас интересует?",
-                                 reply_markup=await inline.active_items())
-   
-   
-async def iterating_items(callback: types.CallbackQuery, iterating, text, callback_data):
-    for item in iterating:
-       await callback.message.answer(f"<strong>{item.name}</strong>", 
-        reply_markup=inline.get_callback_btns(
-           btns={
-               "Удалить": f"{callback_data}_{item.id}",
-           },
-           sizes=(1,)
-       ),
-        )
+class AddAdditionally(StatesGroup):
+    category = State()
+    name = State()
+    value = State()
+
+
+@admin.callback_query(F.data==("add_additionally"))
+async def add_additionally_handler(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
     await callback.answer()
-    await callback.message.answer(text, 
-                                 reply_markup=await inline.back_to_menu_admin())
-   
-@admin.callback_query(F.data.startswith("delete_"))
-async def delete_product_callback(callback: types.CallbackQuery, session: AsyncSession):
-    product_id = callback.data.split("_")[-1]
-    await delete_product(session, int(product_id))
-
-    await callback.answer("Товар удален")
-    await callback.message.answer("Товар удален!")   
-
-
-@admin.callback_query(F.data==("active_regions"))
-async def active_regions(callback: types.CallbackQuery, session: AsyncSession):
-   regions = await get_regions()
-   await callback.answer()
-   await iterating_items(callback, regions, "Вот список активных регионов ⏫", "delete-region")
-
-@admin.callback_query(F.data==("active_category"))
-async def active_regions(callback: types.CallbackQuery, session: AsyncSession):
-   categories = await get_categories()
-   await callback.answer()
-   await iterating_items(callback, categories, "Вот список активных категорий товара ⏫", "delete-category")
-
-@admin.callback_query(F.data==("active_series"))
-async def active_regions(callback: types.CallbackQuery, session: AsyncSession):
-   series = await get_series()
-   await callback.answer()
-   await iterating_items(callback, series, "Вот список активных серий товара ⏫", "delete-series")
-   
-   
-@admin.callback_query(F.data==("active_product"))
-async def active_product_category(callback: types.CallbackQuery, session: AsyncSession):
-    categories = await get_categories()
-    await callback.answer()
-    btns = {category.name : f'p-category_{category.id}' for category in categories}
-    await callback.message.answer("Выберите категорию", reply_markup=inline.get_callback_btns(btns=btns))
-
-@admin.callback_query(F.data.startswith("p-category_"))
-async def active_product(callback: types.CallbackQuery, session: AsyncSession):
-   category_id = callback.data.split("_")[-1]
-   categories = await get_categories_name(int(category_id))
-   products = await get_products_сategory(categories.name)
-   for product in products:
-       await callback.message.answer(f"Наименование: <strong>{product.name}</strong>\n\
-Категория: <strong>{product.category}</strong>\nСерия: {product.series}", 
-        reply_markup=inline.get_callback_btns(
-           btns={
-               "Изменить": f"change_{product.id}",
-               "Удалить": f"delete-product_{product.id}",
-           },
-           sizes=(1,)
-       ),
-        )
-   await callback.answer()
-   await callback.message.answer("Вот список активной продукции ⏫", 
-                                 reply_markup=await inline.back_to_menu_admin())
-   
-@admin.callback_query(F.data==("active_additionally"))
-async def active_additionally(callback: types.CallbackQuery, session: AsyncSession):
-    categories = await get_categories()
-    await callback.answer()
-    btns = {category.name : f'a-category_{category.id}' for category in categories}
-    await callback.answer()
-    await callback.message.edit_text("Выберите категорию", reply_markup=inline.get_callback_btns(btns=btns))
- 
-@admin.callback_query(F.data.startswith("a-category_"))
-async def active_additionally2(callback: types.CallbackQuery, session: AsyncSession):
-    category_id = callback.data.split("_")[-1]
-    category = await get_categories_name(int(category_id))
-    additionallies = await get_additionally_by_category(category)
-    for additionally in additionallies:
-        await callback.message.answer(f"Наименование: <strong>{additionally.name}</strong>\n\
-Категория: <strong>{additionally.category}</strong>\n\
-Доступные значения:\n<strong>{additionally.value}</strong>",
-        reply_markup=inline.get_callback_btns(
-           btns={
-               "Удалить": f"delete-additionally_{additionally.id}",
-           },
-           sizes=(1,)
-       ),
-        )
+    await callback.message.answer("Выберите категорию товара:", reply_markup=await reply.categories())
+    await state.set_state(AddAdditionally.category)
     
+# Хендлер отмены и сброса состояния должен быть всегда именно здесь,
+# после того, как только встали в состояние номер 1 (элементарная очередность фильтров)
+@admin.message(StateFilter("*"), Command("отмена"))
+@admin.message(StateFilter("*"), F.text.casefold() == "отмена")
+async def cancel_handler(message: types.Message, state: FSMContext) -> None:
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+    await state.clear()
+    await message.answer("Действия отменены", reply_markup=await inline.back_to_menu_admin())
+    
+@admin.message(AddAdditionally.category, F.text)
+async def add_additionally_category(message: types.Message, state: FSMContext, session: AsyncSession):
+    await state.update_data(category=message.text)
+    await message.answer("Введите название доп. опции:")
+    await state.set_state(AddAdditionally.name)
+    
+@admin.message(AddAdditionally.name, F.text)
+async def add_additionally_name(message: types.Message, state: FSMContext, session: AsyncSession):
+    await state.update_data(name=message.text)
+    btns = ["Закончить заполнение опции"]
+    await message.answer("Введите значения доп. опций и нажмите кнопку ниже:", 
+                         reply_markup=reply.get_callback_btns(btns=btns))
+    await state.set_state(AddAdditionally.value)
+    
+@admin.message(AddAdditionally.value)
+async def add_aditionally_value(message: types.Message, state: FSMContext, session: AsyncSession):
+    global list_additionally
+    if message.text and message.text != "Закончить заполнение опции":
+        list_additionally.append(message.text)
+    elif message.text == "Закончить заполнение опции":
+        await state.update_data(value=", ".join(list_additionally))
+        data = await state.get_data()
+        try:
+            await add_additionally(session, data)
+            await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
+            await message.answer("Доп. опция успешно добавлена!", reply_markup=await inline.back_to_menu_admin())
+            await state.clear()
+        except Exception as e:
+            await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
+            await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu_admin())
+            await state.clear()
 
 
-   
 #############################################################################################################################
 
 ###################################################### ТЕКУЩИЕ ЗАЯВКИ #######################################################
+
+class FinishDoc(StatesGroup):
+    ticket_id = State()
+    status = State()
+    doc_id = State()
 
 async def get_tickets(callback, status):
     
@@ -474,13 +448,41 @@ async def get_current_ticket(callback: types.CallbackQuery, session: AsyncSessio
     await get_tickets(callback=callback, status="Завершена")
     
 @admin.callback_query(F.data.startswith("progress-ticket-to-finished_"))
-async def finish_ticket(callback: types.CallbackQuery, session: AsyncSession):
+async def finish_ticket(callback: types.CallbackQuery, session: AsyncSession, state: FSMContext):
     fticket_id = callback.data.split("_")[-1]
     ticket = await get_ticket(fticket_id)
     btns = ["Без закрывающих документов"]
     await callback.answer()
     await callback.message.answer(f"Приложите закрывающие документы по заявке №{ticket.id}\n\
 На продукт {ticket.product}\n", reply_markup=reply.get_callback_btns(btns=btns))
+    await state.update_data(ticket_id=fticket_id)
+    await state.set_state(FinishDoc.doc_id)
     
-    
+@admin.message(FinishDoc.doc_id)
+async def finish_ticket_doc(message: types.Message, state: FSMContext, session: AsyncSession, bot: Bot):
+    global list_documents
+    ticket_id = data["ticket_id"]
+    ticket = await get_ticket(ticket_id)
+    if message.document:
+        list_documents.append(message.document.file_id)
+    elif message.text == "Закончить формирование заявки" or message.text == "Без закрывающих документов":
+        if message.text == "Без закрывающих документов":
+            await state.update_data(documents=None)
+        elif message.text == "Закончить формирование заявки":
+            await state.update_data(documents=', '.join(list_documents))
+        state.update_data(status="Завершена")
+        data = await state.get_data()
+        try:
+            await finish_ticket(session, ticket_id, data)
+            await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
+            await message.answer("Заявка успешно завершена!", reply_markup=await inline.back_to_menu_admin())
+            await bot.send_message(chat_id=ticket.tg_id, text=f"✅ Ваша заявка №{ticket.id} на продукт {ticket.product} успешно завершена!\n\
+Чтобы посмотреть завершающие документы, нажми на кнопку ниже 👇🏻", reply_markup=inline.get_callback_btns(btns={"Показать закрывающие документы": f"ticket-media_{ticket.id}"}))
+            await state.clear()
+        except Exception as e:
+            await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
+            await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu_admin())
+            await state.clear()
+
+  
 ######################################## Удаление #################################################

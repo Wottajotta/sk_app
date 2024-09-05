@@ -23,6 +23,7 @@ async def admin_menu():
         [InlineKeyboardButton(text='Добавить Категорию ➕', callback_data='add_category')],
         [InlineKeyboardButton(text='Добавить Серию ➕', callback_data='add_series')],
         [InlineKeyboardButton(text='Добавить Продукт ➕', callback_data='add_product')],
+        [InlineKeyboardButton(text='Добавить Доп. Опции ➕', callback_data='add_additionally')],
         [InlineKeyboardButton(text='Номенклатура 📦', callback_data='acitve_items')],
         [InlineKeyboardButton(text='Поддержка 👨🏻‍💻', callback_data="support")],
     ])
