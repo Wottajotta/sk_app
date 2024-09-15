@@ -81,6 +81,7 @@ async def additionally_name(category):
     all_additionally = await get_additionally_by_category(category)
     keyboard = ReplyKeyboardBuilder()
     
+    keyboard.add(KeyboardButton(text="Далее"))
     for additionally in all_additionally:
         keyboard.add(KeyboardButton(text=additionally.name))
         

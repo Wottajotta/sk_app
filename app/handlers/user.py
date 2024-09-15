@@ -16,6 +16,10 @@ user = Router()
 list_images = []
 list_documents = []
 
+# Массив для хранения названий и данных
+name_list = []
+data_list = []
+
 
 ############################################### /start #####################################################################################
 @user.callback_query(F.data == "back_to_menu")
@@ -145,39 +149,64 @@ async def add_ticket_product(message: types.Message, state: FSMContext):
         await state.update_data(product=AddTicket.ticket_for_change.product)
     elif str(message.text) in [product.name for product in await get_products_by_series(data.get("series"))]:
         await state.update_data(product=message.text)
-        await message.answer("Выберите доп. опции", reply_markup=await reply.additionally_name(data.get("category")))
+        await message.answer("Выберите доп. опции\nНажмите на кнопки с нужными названиями и нажмите «Далее»", 
+                             reply_markup=await reply.additionally_name(data.get("category")))
         await state.set_state(AddTicket.additionally)
     else:
         await message.answer("Вы ввели недопустимые данные, выберите продукт, используя кнопки ниже!")
 
 #TODO Переделать выбор доп. опций    
-@user.message(AddTicket.additionally, F.text)
+@user.message(AddTicket.additionally)
 async def add_ticket_additionally(message: types.Message, state: FSMContext, session: AsyncSession):
+    global name_list
     data = await state.get_data()
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(additionally=AddTicket.ticket_for_change.additionally)
     elif str(message.text) in [additionally.name for additionally in await get_additionally_by_category(data.get("category"))]:
-        additionallies = await get_additionally_by_category(data.get("category"))
-        await state.update_data(additionally=message.text)
-        await message.answer("Выберите значение доп. опции", 
-                             reply_markup=await reply.additionally_value(message.text))
-        await state.set_state(AddTicket.additionally_value)
+        if message.text.lower() == "далее":
+            if not name_list:
+                await message.reply("Вы не ввели ни одного названия.")
+                return
+            await state.set_state(AddTicket.additionally_value)
+            await process_next_name(message, state)
+        elif message.text:
+            name_list.append(message.text)
     else:
         await message.answer("Вы ввели недопустимые данные, выберите доп. опции, используя кнопки ниже!")
+        
+async def process_next_name(message: types.Message, state: FSMContext):
+    if name_list:
+        current_name = name_list.pop(0)  # Получаем текущее имя
+        await message.answer(f"Введите данные для '{current_name}':", 
+                             reply_markup=await reply.additionally_value(current_name))
+        # Сохраняем текущее имя в контексте состояния
+        await state.update_data(current_name=current_name)
+    else:
+        # Объединяем все данные в одну строку
+        all_data = ", ".join(data_list)
+        await state.update_data(additionally_value=all_data)
+        await message.answer("Напишите комментарий к заявке или введите цифру 1 для пропуска", 
+                            reply_markup=types.ReplyKeyboardRemove())
+        await state.set_state(AddTicket.not_exist)
  
-@user.message(AddTicket.additionally_value, F.text)
+@user.message(AddTicket.additionally_value)
 async def add_ticket_additionally_value(message: types.Message, state: FSMContext, session: AsyncSession):
-    data = await state.get_data()
-    all_additionally = await get_additionally_by_name(data.get("additionally"))
+    
+    user_data = await state.get_data()
+    current_name = user_data.get('current_name')
+    all_additionally = await get_additionally_by_name(current_name)
     additionally_value_data = "".join([add for add in all_additionally])
     additionally_value_data = additionally_value_data.split(", ")
+
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(additionally=AddTicket.ticket_for_change.additionally)
     elif str(message.text) in [additionally for additionally in additionally_value_data]:
-        await state.update_data(additionally_value=message.text)
-        await message.answer("Напишите комментарий к заявке или введите цифру 1 для пропуска", 
-                            reply_markup=types.ReplyKeyboardRemove())
-        await state.set_state(AddTicket.not_exist)  
+        if current_name:
+            # Получаем введенные данные
+            data = message.text  
+            await message.answer(f"Вы ввели данные для '{current_name}': {data}")
+            data_list.append(f"{current_name}: {data}")
+            await process_next_name(message, state)  # Переходим к следующему имени
     else:
         await message.answer("Вы ввели недопустимые данные, выберите значение доп. опции, используя кнопки ниже!")
         
@@ -229,7 +258,7 @@ async def send_ticket_to_group(bot, text):
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\
 Серия: {ticket.series}\n\
-Доп. информация: <strong>{ticket.additionally}{ticket.additionally_value}</strong>",
+Доп. информация: <strong>{ticket.additionally}</strong>",
     reply_markup=inline.get_callback_btns(btns={"Подробнее" : f"new-ticket_{ticket.id}"}))
         
 @user.message(AddTicket.documents)
