@@ -98,6 +98,7 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     if AddTicket.ticket_for_change:
         AddTicket.ticket_for_change = None
     await state.clear()
+    await message.answer("Отменяю...", reply_markup=types.ReplyKeyboardRemove())
     await message.answer("Действия отменены", reply_markup=await inline.back_to_menu())
     
 @user.message(AddTicket.user_id, F.text)
@@ -160,19 +161,27 @@ async def add_ticket_product(message: types.Message, state: FSMContext):
 async def add_ticket_additionally(message: types.Message, state: FSMContext, session: AsyncSession):
     global name_list
     data = await state.get_data()
+
     if message.text == "." and AddTicket.ticket_for_change:
-        await state.update_data(additionally=AddTicket.ticket_for_change.additionally)
-    elif str(message.text) in [additionally.name for additionally in await get_additionally_by_category(data.get("category"))]:
-        if message.text.lower() == "далее":
-            if not name_list:
-                await message.reply("Вы не ввели ни одного названия.")
-                return
-            await state.set_state(AddTicket.additionally_value)
-            await process_next_name(message, state)
-        elif message.text:
-            name_list.append(message.text)
+        await state.update_data(product=AddTicket.ticket_for_change.additionally)
+    # Проверка на "Далее"
+    if message.text.strip() == "Далее":
+        if not name_list:
+            await message.reply("Вы не ввели ни одного названия.")
+            return
+        
+        await state.set_state(AddTicket.additionally_value)
+        await process_next_name(message, state)
+        return  # Завершение функции после обработки "Далее"
+
+    # Проверка на наличие текста в списке дополнительных опций
+    additionally_options = [additionally.name for additionally in await get_additionally_by_category(data.get("category"))]
+    
+    if message.text.strip() in additionally_options:
+        name_list.append(message.text.strip())
     else:
         await message.answer("Вы ввели недопустимые данные, выберите доп. опции, используя кнопки ниже!")
+
         
 async def process_next_name(message: types.Message, state: FSMContext):
     if name_list:
@@ -186,29 +195,31 @@ async def process_next_name(message: types.Message, state: FSMContext):
         all_data = ", ".join(data_list)
         await state.update_data(additionally_value=all_data)
         await message.answer("Напишите комментарий к заявке или введите цифру 1 для пропуска", 
-                            reply_markup=types.ReplyKeyboardRemove())
+                             reply_markup=types.ReplyKeyboardRemove())
         await state.set_state(AddTicket.not_exist)
  
 @user.message(AddTicket.additionally_value)
 async def add_ticket_additionally_value(message: types.Message, state: FSMContext, session: AsyncSession):
-    
     user_data = await state.get_data()
     current_name = user_data.get('current_name')
     all_additionally = await get_additionally_by_name(current_name)
-    additionally_value_data = "".join([add for add in all_additionally])
-    additionally_value_data = additionally_value_data.split(", ")
+    additionally_value_data = [add.strip() for add in all_additionally.split(", ")]
+
+    # Удаляем предыдущую клавиатуру
+    await message.answer("Обработка...", reply_markup=types.ReplyKeyboardRemove())
 
     if message.text == "." and AddTicket.ticket_for_change:
-        await state.update_data(additionally=AddTicket.ticket_for_change.additionally)
-    elif str(message.text) in [additionally for additionally in additionally_value_data]:
+        await state.update_data(additionally=AddTicket.ticket_for_change.additionally_value)
+    elif str(message.text) in additionally_value_data:
         if current_name:
-            # Получаем введенные данные
             data = message.text  
-            await message.answer(f"Вы ввели данные для '{current_name}': {data}")
+            await message.answer(f"Вы ввели данные для '{current_name}': {data}", 
+                                 reply_markup=types.ReplyKeyboardRemove())
             data_list.append(f"{current_name}: {data}")
             await process_next_name(message, state)  # Переходим к следующему имени
     else:
         await message.answer("Вы ввели недопустимые данные, выберите значение доп. опции, используя кнопки ниже!")
+
         
 @user.message(AddTicket.not_exist, F.text)
 async def add_ticket_not_exist(message: types.Message, state: FSMContext, session: AsyncSession):

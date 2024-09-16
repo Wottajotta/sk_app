@@ -281,12 +281,15 @@ async def add_product_series(message: types.Message, state: FSMContext, session:
 @admin.message(AddProduct.series, F.text)
 async def add_product_equipment(message: types.Message, state: FSMContext, session: AsyncSession):
     await state.update_data(series=message.text)
-    await message.answer("Укажите комплектацию", reply_markup=types.ReplyKeyboardRemove())
+    await message.answer("Укажите комплектацию или введите 1 для пропуска", reply_markup=types.ReplyKeyboardRemove())
     await state.set_state(AddProduct.equipment)
     
 @admin.message(AddProduct.equipment, F.text)
 async def add_region_name(message: types.Message, state: FSMContext, session: AsyncSession):
-    await state.update_data(equipment=message.text)
+    if message.text == "1":
+        await state.update_data(equipment=None)
+    else:
+        await state.update_data(equipment=message.text)
     data = await state.get_data()
     try:
         if AddProduct.product_for_change:

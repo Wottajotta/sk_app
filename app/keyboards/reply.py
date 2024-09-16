@@ -89,8 +89,7 @@ async def additionally_name(category):
 
 async def additionally_value(name):
     all_additionally = await get_additionally_by_name(name)
-    data = "".join([add for add in all_additionally])
-    data = data.split(", ")
+    data = all_additionally.split(", ")
     
     keyboard = ReplyKeyboardBuilder()
     for additionally in data:
