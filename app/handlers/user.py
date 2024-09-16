@@ -186,6 +186,10 @@ async def add_ticket_additionally(message: types.Message, state: FSMContext, ses
 async def process_next_name(message: types.Message, state: FSMContext):
     if name_list:
         current_name = name_list.pop(0)  # Получаем текущее имя
+        
+        # Удаление предыдущей клавиатуры, если она была
+        await message.answer("Обработка...", reply_markup=types.ReplyKeyboardRemove())
+        
         await message.answer(f"Введите данные для '{current_name}':", 
                              reply_markup=await reply.additionally_value(current_name))
         # Сохраняем текущее имя в контексте состояния
@@ -204,10 +208,7 @@ async def add_ticket_additionally_value(message: types.Message, state: FSMContex
     current_name = user_data.get('current_name')
     all_additionally = await get_additionally_by_name(current_name)
     additionally_value_data = [add.strip() for add in all_additionally.split(", ")]
-
-    # Удаляем предыдущую клавиатуру
-    await message.answer("Обработка...", reply_markup=types.ReplyKeyboardRemove())
-
+    
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(additionally=AddTicket.ticket_for_change.additionally_value)
     elif str(message.text) in additionally_value_data:
