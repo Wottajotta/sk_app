@@ -71,7 +71,7 @@ async def get_one_new_ticket(callback, ticket_id):
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\
 Серия: <strong>{ticket.series}</strong>\n\
-Доп. информация: <strong>{ticket.additionally}{ticket.additionally_value}</strong>",
+Доп. информация: <strong>{ticket.additionally}</strong>",
     reply_markup=inline.get_callback_btns(btns=btns,
     sizes=(1,)
     )

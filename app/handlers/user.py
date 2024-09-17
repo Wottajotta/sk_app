@@ -101,7 +101,7 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     await message.answer("Отменяю...", reply_markup=types.ReplyKeyboardRemove())
     await message.answer("Действия отменены", reply_markup=await inline.back_to_menu())
     
-@user.message(AddTicket.user_id, F.text)
+@user.message(AddTicket.user_id, F.text=="Новая заявка")
 async def add_ticket_user_id(message: types.Message, state: FSMContext):
     await state.update_data(status="Новая")
     await state.update_data(user_id=int(message.from_user.id))
@@ -185,17 +185,11 @@ async def add_ticket_additionally(message: types.Message, state: FSMContext, ses
         
 async def process_next_name(message: types.Message, state: FSMContext):
     if name_list:
-        current_name = name_list.pop(0)  # Получаем текущее имя
-        
-        # Удаление предыдущей клавиатуры, если она была
-        await message.answer("Обработка...", reply_markup=types.ReplyKeyboardRemove())
-        
+        current_name = name_list.pop(0)
         await message.answer(f"Введите данные для '{current_name}':", 
                              reply_markup=await reply.additionally_value(current_name))
-        # Сохраняем текущее имя в контексте состояния
         await state.update_data(current_name=current_name)
     else:
-        # Объединяем все данные в одну строку
         all_data = ", ".join(data_list)
         await state.update_data(additionally_value=all_data)
         await message.answer("Напишите комментарий к заявке или введите цифру 1 для пропуска", 
@@ -214,10 +208,9 @@ async def add_ticket_additionally_value(message: types.Message, state: FSMContex
     elif str(message.text) in additionally_value_data:
         if current_name:
             data = message.text  
-            await message.answer(f"Вы ввели данные для '{current_name}': {data}", 
-                                 reply_markup=types.ReplyKeyboardRemove())
+            await message.answer(f"Вы ввели данные для '{current_name}': {data}")
             data_list.append(f"{current_name}: {data}")
-            await process_next_name(message, state)  # Переходим к следующему имени
+            await process_next_name(message, state)
     else:
         await message.answer("Вы ввели недопустимые данные, выберите значение доп. опции, используя кнопки ниже!")
 
@@ -242,7 +235,7 @@ async def add_ticket_not_exist(message: types.Message, state: FSMContext, sessio
 @user.message(AddTicket.images)
 async def add_ticket_images(message: types.Message, state: FSMContext, session: AsyncSession):
     if message.text == "Без фото":
-        await state.update_data(images=None)
+        await state.update_data(images="")
         btns = ["Закончить формирование заявки"]
         await message.answer("Приложите документ и нажмите на кнопку: Закончить формирование заявки", 
         reply_markup=reply.get_callback_btns(btns=btns))
@@ -334,38 +327,10 @@ reply_markup=inline.get_callback_btns(
     await message.answer("Вот все заявки от вашего имени ⏫", reply_markup=await inline.back_to_menu())
 
 ########
-   
-@user.message(F.text=="Новые заявки")
-async def all_user_tickets(message: types.Message, session: AsyncSession):
-    
+async def get_user_tickets_by_status(message, status):    
     all_tickets = await get_tickets_by_id(message.from_user.id)
     for ticket in all_tickets:
-        if ticket.status == "Новая":
-            await message.answer(f"ЗАЯВКА №{ticket.id}\n\n\
-Статус: <strong>{ticket.status}</strong>\n\
-Регион: <strong>{ticket.region}</strong>\n\
-Продукт: <strong>{ticket.product}</strong>\n\
-Категория: <strong>{ticket.category}</strong>\n\
-Серия: {ticket.series}\n\
-Доп. информация: <strong>{ticket.additionally}</strong>", 
-reply_markup=inline.get_callback_btns(
-           btns={
-               "Показать вложения": f"ticket-media_{ticket.id}",
-               "Изменить": f"t-change_{ticket.id}",
-           },
-           sizes=(1,)
-       ),)
-    
-    await message.answer("Вот все заявки от вашего имени ⏫", reply_markup=await inline.back_to_menu())
- 
-######## 
-   
-@user.message(F.text=="Заявки в работе")
-async def all_user_tickets(message: types.Message, session: AsyncSession):
-    
-    all_tickets = await get_tickets_by_id(message.from_user.id)
-    for ticket in all_tickets:
-        if ticket.status == "В работе":
+        if ticket.status == status:
             await message.answer(f"ЗАЯВКА №{ticket.id}\n\n\
 Статус: <strong>{ticket.status}</strong>\n\
 Регион: <strong>{ticket.region}</strong>\n\
@@ -381,7 +346,32 @@ reply_markup=inline.get_callback_btns(
            sizes=(1,)
        ),)
     
-    await message.answer("Вот все заявки от вашего имени ⏫", reply_markup=await inline.back_to_menu())
+    await message.answer("Вот все заявки от вашего имени ⏫", 
+                         reply_markup=await inline.back_to_menu())
+ 
+######## 
+
+@user.message(F.text=="Новые заявки")
+async def all_user_tickets(message: types.Message, session: AsyncSession):
+    await get_user_tickets_by_status(message, "Новая")
+    
+########
+
+@user.message(F.text=="Отредактированные заявки")
+async def all_user_tickets(message: types.Message, session: AsyncSession):
+    await (await get_user_tickets_by_status(message, "Отредактировано"))
+    
+########
+
+@user.message(F.text=="Заявки в работе")
+async def all_user_tickets(message: types.Message, session: AsyncSession):
+    await (await get_user_tickets_by_status(message, "В работе"))
+    
+########
+
+@user.message(F.text=="Завершенные заявки")
+async def all_user_tickets(message: types.Message, session: AsyncSession):
+    await (await get_user_tickets_by_status(message, "Завершена"))
     
 ########
     
@@ -418,14 +408,14 @@ async def get_ticket_media(callback: types.CallbackQuery, bot: Bot):
         # Отправляем медиа группу
         await bot.send_media_group(chat_id=chat_id, media=media_documents)
         await bot.send_message(chat_id, f"Документы к заявке №{ticket.id}", 
-                               reply_markup=await inline.back_to_menu())
+                               )
     if not media_photos:
         # Если нет фото, отправляем уведомление
         await bot.send_message(chat_id, f"Нет фото для отправки по заявке №{ticket.id}")
     if not media_documents:
         # Если нет фото, отправляем уведомление
         await bot.send_message(chat_id, f"Нет документов для отправки по заявке №{ticket.id}",
-                               reply_markup=await inline.back_to_menu())
+                               )
     if not media_documents and not media_photos:
         # Если нет медиа, отправляем уведомление
         await bot.send_message(chat_id, f"Нет медиа для отправки по заявке №{ticket.id}")
@@ -442,22 +432,20 @@ async def get_finish_ticket_media(callback: types.CallbackQuery, bot: Bot):
     ticket = await get_ticket(ticket_id)
     
     documents = ticket.finish_documents
-
-    # Разделяем строки с ID на отдельные элементы, если строки не пустые
     document_ids = documents.split(", ") if documents else []
 
-    # Создаем список медиа объектов для отправки
     media_documents = []
-    # Добавляем документы в медиа группу
     for doc_id in document_ids:
         media_documents.append(InputMediaDocument(media=doc_id))
-    # Проверяем, есть ли медиа для отправки
     if media_documents:
-        # Отправляем медиа группу
         await bot.send_media_group(chat_id=chat_id, media=media_documents)
         await bot.send_message(chat_id, f"Документы к заявке №{ticket.id}")
     if not media_documents:
-        # Если нет документов, отправляем уведомление
-        await bot.send_message(chat_id, f"Нет документов для отправки по заявке №{ticket.id}", reply_markup=await inline.back_to_menu())
+        await bot.send_message(chat_id, f"Нет документов по заявке №{ticket.id}")
 
 #############################################################################################################################
+
+@user.message(F.text)
+async def fake_text(message: types.Message):
+    await message.answer("Вы отправили текст без назначения!\
+Если хотите воспользоваться ботом, пожалуйста, используйте меню -> /start")

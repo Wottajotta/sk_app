@@ -11,16 +11,10 @@ from app.filters.chat_types import ChatTypeFilter, AdminProtect
 from app.db.requests import (
     get_additionally_by_category,
     get_categories_name,
-    get_product,
     get_products_сategory,
     get_regions,
     get_categories,
-    get_regions_by_id,
     get_series,
-    get_products,
-    get_ticket,
-    get_tickets_by_region,
-    update_product,
     
 )
 

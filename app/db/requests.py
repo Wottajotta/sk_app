@@ -184,7 +184,7 @@ async def finish_ticket(session: AsyncSession, ticket_id: int, data):
         .where(Ticket.id == ticket_id)
         .values(
             status=data["status"],
-            finish_documents=data["finish_documents"],
+            finish_documents=data["doc_id"],
         )
     )
     await session.execute(query)

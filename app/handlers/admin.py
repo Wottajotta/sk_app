@@ -15,6 +15,7 @@ from app.db.requests import (
     add_product,
     add_series,
     delete_product,
+    finish_ticket,
     get_additionally_by_category,
     get_categories_name,
     get_product,
@@ -200,22 +201,13 @@ class AddProduct(StatesGroup):
     
     product_for_change = None
     
-    texts = {
-        "AddProduct:category": "Выберите категорию заново ⬆️",
-        "AddProduct:series": "Выберите серию заново ⬆️",
-        "AddProduct:name": "Введите имя заново:",
-    }
-    
 @admin.callback_query(StateFilter(None), F.data.startswith("change_"))
 async def change_product_callback(
     callback: types.CallbackQuery, state: FSMContext, session: AsyncSession
 ):
     product_id = callback.data.split("_")[-1]
-
     product_for_change = await get_product(int(product_id))
-
     AddProduct.product_for_change = product_for_change
-
     await callback.answer()
     await callback.message.answer(
         "Введите название товара", reply_markup=types.ReplyKeyboardRemove()
@@ -238,29 +230,7 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     if current_state is None:
         return
     await state.clear()
-    await message.answer("Действия отменены", reply_markup=await inline.back_to_menu_admin())
-
-# Вернутся на шаг назад (на прошлое состояние)
-@admin.message(StateFilter("*"), Command("назад"))
-@admin.message(StateFilter("*"), F.text.casefold() == "назад")
-async def back_step_handler(message: types.Message, state: FSMContext) -> None:
-    current_state = await state.get_state()
-
-    if current_state == AddProduct.name:
-        await message.answer(
-            'Предыдущего шага нет, или введите название товара или напишите "отмена"'
-        )
-        return
-
-    previous = None
-    for step in AddProduct.__all_states__:
-        if step.state == current_state:
-            await state.set_state(previous)
-            await message.answer(
-                f"Ок, вы вернулись к прошлому шагу \n {AddProduct.texts[previous.state]}"
-            )
-            return
-        previous = step   
+    await message.answer("Действия отменены", reply_markup=await inline.back_to_menu_admin()) 
     
 @admin.message(AddProduct.name, F.text)
 async def add_product_category(message: types.Message, state: FSMContext, session: AsyncSession): 
@@ -287,7 +257,7 @@ async def add_product_equipment(message: types.Message, state: FSMContext, sessi
 @admin.message(AddProduct.equipment, F.text)
 async def add_region_name(message: types.Message, state: FSMContext, session: AsyncSession):
     if message.text == "1":
-        await state.update_data(equipment=None)
+        await state.update_data(equipment="")
     else:
         await state.update_data(equipment=message.text)
     data = await state.get_data()
@@ -357,6 +327,7 @@ async def add_aditionally_value(message: types.Message, state: FSMContext, sessi
             await add_additionally(session, data)
             await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
             await message.answer("Доп. опция успешно добавлена!", reply_markup=await inline.back_to_menu_admin())
+            list_additionally = []
             await state.clear()
         except Exception as e:
             await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
@@ -392,10 +363,9 @@ async def get_tickets(callback, status):
             "Завершить" : f"progress-ticket-to-finished_{ticket.id}",
             }
         
-        elif status == "В работе":
+        elif status == "Завершена":
             btns={
             "Показать вложения" : f"ticket-media_{ticket.id}",
-            "Завершить" : f"progress-ticket-to-finished_{ticket.id}",
             }
         
         if ticket.status == status:
@@ -451,7 +421,7 @@ async def get_current_ticket(callback: types.CallbackQuery, session: AsyncSessio
     await get_tickets(callback=callback, status="Завершена")
     
 @admin.callback_query(F.data.startswith("progress-ticket-to-finished_"))
-async def finish_ticket(callback: types.CallbackQuery, session: AsyncSession, state: FSMContext):
+async def finish_ticket_handler(callback: types.CallbackQuery, session: AsyncSession, state: FSMContext):
     fticket_id = callback.data.split("_")[-1]
     ticket = await get_ticket(fticket_id)
     btns = ["Без закрывающих документов", "Закончить формирование заявки"]
