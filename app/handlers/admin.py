@@ -14,17 +14,10 @@ from app.db.requests import (
     add_category,
     add_product,
     add_series,
-    delete_product,
     finish_ticket,
-    get_additionally_by_category,
-    get_categories_name,
     get_product,
-    get_products_сategory,
     get_regions,
-    get_categories,
     get_regions_by_id,
-    get_series,
-    get_products,
     get_ticket,
     get_tickets_by_region,
     update_product,
@@ -40,6 +33,11 @@ admin.message.filter(ChatTypeFilter(["private"]), AdminProtect())
 
 
 ############################################ Старт/back ########################################################################
+@admin.message(Command("admin"))
+async def admin_menu(message: types.Message):
+    await message.answer(f"Привет, {message.from_user.first_name}!\n\n\
+Это админ-панель, внизу ты найдешь все необходимое для настройки бота, удачи!", 
+reply_markup=await inline.admin_menu())
 
 @admin.callback_query(F.data==("back_to_panel"))
 async def back_to_panel(callback: types.CallbackQuery):
@@ -48,11 +46,6 @@ async def back_to_panel(callback: types.CallbackQuery):
 Это админ-панель, внизу ты найдешь все необходимое для настройки бота, удачи!", 
 reply_markup=await inline.admin_menu())
     
-@admin.message(Command("admin"))
-async def admin_menu(message: types.Message):
-    await message.answer(f"Привет, {message.from_user.first_name}!\n\n\
-Это админ-панель, внизу ты найдешь все необходимое для настройки бота, удачи!", 
-reply_markup=await inline.admin_menu())
    
 ################################################################################################################################    
 
@@ -376,7 +369,9 @@ async def get_tickets(callback, status):
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\
 Серия: <strong>{ticket.series}</strong>\n\
-Доп. информация: <strong>{ticket.additionally}</strong>",
+Комлпектация: {ticket.equipment}\n\
+Доп. информация: <strong>{ticket.additionally}</strong>\n\
+Комментарий: {ticket.not_exist}",
     reply_markup=inline.get_callback_btns(btns=btns,
     sizes=(1,)
     ),),

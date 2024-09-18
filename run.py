@@ -24,7 +24,7 @@ async def main():
     bot = Bot(os.getenv('TOKEN'), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
     
-    dp.include_routers(user, admin, user_group, admin_nomenclature)
+    dp.include_routers(admin, user, user_group, admin_nomenclature)
     
     dp.update.middleware(DataBaseSession(session_pool=async_session))
     

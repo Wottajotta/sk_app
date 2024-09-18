@@ -242,23 +242,28 @@ async def add_finished_documents(session: AsyncSession, ticket_id, doc_id: str):
     
 ##################################### Удаление позиций ############################################
 
-async def delete_category(session: AsyncSession, product_id: int):
-    query = delete(Category).where(Category.id == product_id)
+async def delete_region(session: AsyncSession, region_id):
+    query = delete(Region).where(Region.id == int(region_id))
+    await session.execute(query)
+    await session.commit()
+
+async def delete_category(session: AsyncSession, product_id):
+    query = delete(Category).where(Category.id == int(product_id))
     await session.execute(query)
     await session.commit()
     
-async def delete_series(session: AsyncSession, product_id: int):
-    query = delete(Series).where(Series.id == product_id)
+async def delete_series(session: AsyncSession, product_id):
+    query = delete(Series).where(Series.id == int(product_id))
     await session.execute(query)
     await session.commit()
     
-async def delete_product(session: AsyncSession, product_id: int):
-    query = delete(Product).where(Product.id == product_id)
+async def delete_product(session: AsyncSession, product_id):
+    query = delete(Product).where(Product.id == int(product_id))
     await session.execute(query)
     await session.commit()
     
-async def delete_additionally(session: AsyncSession, product_id: int):
-    query = delete(Additionally).where(Additionally.id == product_id)
+async def delete_additionally(session: AsyncSession, product_id):
+    query = delete(Additionally).where(Additionally.id == int(product_id))
     await session.execute(query)
     await session.commit()
     

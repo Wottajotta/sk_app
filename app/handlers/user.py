@@ -6,10 +6,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import InputMediaPhoto, InputMediaDocument
 
 from app.db.requests import create_ticket, get_additionally, get_additionally_by_category, get_additionally_by_name, get_categories, get_last_ticket, get_products, get_products_by_series, get_regions, get_series, get_series_by_categories, get_ticket, get_tickets_by_id, update_ticket
+from app.filters.chat_types import ChatTypeFilter
 from app.handlers.user_group import get_tickets_media
 from app.keyboards import inline, reply
 from common.texts import admin_contact
 from common.texts.group import group_id
+from config import ADMIN_LIST
 
 user = Router()
 
@@ -20,6 +22,7 @@ list_documents = []
 name_list = []
 data_list = []
 
+user.message.filter(ChatTypeFilter(["private"]))
 
 ############################################### /start #####################################################################################
 @user.callback_query(F.data == "back_to_menu")
@@ -315,7 +318,9 @@ async def all_user_tickets(message: types.Message, session: AsyncSession):
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\
 Серия: {ticket.series}\n\
-Доп. информация: <strong>{ticket.additionally}</strong>", 
+Комлпектация: {ticket.equipment}\n\
+Доп. информация: <strong>{ticket.additionally}</strong>\n\
+Комментарий: {ticket.not_exist}", 
 reply_markup=inline.get_callback_btns(
            btns={
                "Показать вложения": f"p-ticket-media_{ticket.id}",
@@ -337,7 +342,11 @@ async def get_user_tickets_by_status(message, status):
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\
 Серия: {ticket.series}\n\
-Доп. информация: <strong>{ticket.additionally}</strong>", 
+Комлпектация: {ticket.equipment}\n\
+Доп. информация: <strong>{ticket.additionally}</strong>\n\
+Комментарий: {ticket.not_exist}"
+    , 
+
 reply_markup=inline.get_callback_btns(
            btns={
                "Показать вложения": f"p-ticket-media_{ticket.id}",
@@ -447,5 +456,10 @@ async def get_finish_ticket_media(callback: types.CallbackQuery, bot: Bot):
 
 @user.message(F.text)
 async def fake_text(message: types.Message):
-    await message.answer("Вы отправили текст без назначения!\
+    if message.from_user.id in ADMIN_LIST:
+        await message.answer("Вы отправили текст без назначения!\n\
+Если хотите воспользоваться ботом, пожалуйста, используйте команды:\n<strong>/start - меню пользователя</strong>\n\
+<strong>/admin - админ-панель</strong>")
+    else:
+        await message.answer("Вы отправили текст без назначения!\n\
 Если хотите воспользоваться ботом, пожалуйста, используйте меню -> /start")
