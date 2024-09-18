@@ -47,7 +47,9 @@ text=f"Заявка <strong>№{ticket.id}</strong>\n\
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\
 Серия: <strong>{ticket.series}</strong>\n\
-Доп. информация: <strong>{ticket.additionally}</strong>",
+Комлпектация: {ticket.equipment}\n\
+Доп. информация: <strong>{ticket.additionally}</strong>\n\
+Комментарий: {ticket.not_exist}",
     reply_markup=inline.get_callback_btns(btns=btns,
     sizes=(1,)
     )
@@ -71,7 +73,9 @@ async def get_one_new_ticket(callback, ticket_id):
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\
 Серия: <strong>{ticket.series}</strong>\n\
-Доп. информация: <strong>{ticket.additionally}</strong>",
+Комлпектация: {ticket.equipment}\n\
+Доп. информация: <strong>{ticket.additionally}</strong>\n\
+Комментарий: {ticket.not_exist}",
     reply_markup=inline.get_callback_btns(btns=btns,
     sizes=(1,)
     )

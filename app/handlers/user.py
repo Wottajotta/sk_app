@@ -218,9 +218,9 @@ async def add_ticket_additionally_value(message: types.Message, state: FSMContex
         await message.answer("Вы ввели недопустимые данные, выберите значение доп. опции, используя кнопки ниже!")
 
         
-@user.message(AddTicket.not_exist, F.text)
+@user.message(AddTicket.not_exist)
 async def add_ticket_not_exist(message: types.Message, state: FSMContext, session: AsyncSession):
-    if message.text == "1":
+    if message.text and message.text == "1":
         await state.update_data(not_exist="")
         btns = ["Без фото", "Закончить фотоотчет"]
         await message.answer("Приложите фото и нажмите на кнопку: Закончить фотоотчет",
@@ -266,7 +266,9 @@ async def send_ticket_to_group(bot, text):
 Продукт: <strong>{ticket.product}</strong>\n\
 Категория: <strong>{ticket.category}</strong>\n\
 Серия: {ticket.series}\n\
-Доп. информация: <strong>{ticket.additionally}</strong>",
+Комлпектация: {ticket.equipment}\n\
+Доп. информация: <strong>{ticket.additionally}</strong>\n\
+Комментарий: {ticket.not_exist}",
     reply_markup=inline.get_callback_btns(btns={"Подробнее" : f"new-ticket_{ticket.id}"}))
         
 @user.message(AddTicket.documents)
