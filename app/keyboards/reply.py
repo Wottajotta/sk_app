@@ -27,10 +27,10 @@ new_ticket = ReplyKeyboardMarkup(
 user_tickets = ReplyKeyboardMarkup(
     keyboard=[
         
-        [KeyboardButton(text="Все заявки")],
-        [KeyboardButton(text="Новые заявки")],
-        [KeyboardButton(text="Отредактированные заявки")],
-        [KeyboardButton(text="Заявки в работе")],
+        [KeyboardButton(text="Все заявки"),
+        KeyboardButton(text="Новые заявки")],
+        [KeyboardButton(text="Отредактированные заявки"),
+        KeyboardButton(text="Заявки в работе")],
         [KeyboardButton(text="Завершенные заявки")],
     ],
     resize_keyboard=True,

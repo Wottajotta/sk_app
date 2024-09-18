@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.context import FSMContext
 
 from app.keyboards import inline, reply
-from common.texts import ticket_texts
 from app.filters.chat_types import ChatTypeFilter, AdminProtect
 
 from app.db.requests import (
@@ -15,9 +14,11 @@ from app.db.requests import (
     add_product,
     add_series,
     finish_ticket,
+    get_categories,
     get_product,
     get_regions,
     get_regions_by_id,
+    get_series_by_categories,
     get_ticket,
     get_tickets_by_region,
     update_product,
@@ -68,6 +69,7 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     if current_state is None:
         return
     await state.clear()
+    await message.answer("Отменяю...", reply_markup=types.ReplyKeyboardRemove())
     await message.answer("Действия отменены", reply_markup=await inline.back_to_menu_admin())
     
     
@@ -111,6 +113,7 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     if current_state is None:
         return
     await state.clear()
+    await message.answer("Отменяю...", reply_markup=types.ReplyKeyboardRemove())
     await message.answer("Действия отменены", reply_markup=await inline.back_to_menu_admin())
     
     
@@ -155,6 +158,7 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     if current_state is None:
         return
     await state.clear()
+    await message.answer("Отменяю...", reply_markup=types.ReplyKeyboardRemove())
     await message.answer("Действия отменены", reply_markup=await inline.back_to_menu_admin())
     
     
@@ -171,17 +175,20 @@ async def add_series_name(message: types.Message, state: FSMContext, session: As
     
 @admin.message(AddSeries.category, F.text)
 async def add_series_category(message: types.Message, state: FSMContext, session: AsyncSession):
-    await state.update_data(category=message.text)
-    data = await state.get_data()
-    try:
-        await add_series(session, data)
-        await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
-        await message.answer("Серия успешно добавлена!", reply_markup=await inline.back_to_menu_admin())
-        await state.clear()
-    except Exception as e:
-        await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
-        await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu_admin())
-        await state.clear()
+    if str(message.text) in [category.name for category in await get_categories()]:
+        await state.update_data(category=message.text)
+        data = await state.get_data()
+        try:
+            await add_series(session, data)
+            await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
+            await message.answer("Серия успешно добавлена!", reply_markup=await inline.back_to_menu_admin())
+            await state.clear()
+        except Exception as e:
+            await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
+            await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", reply_markup=await inline.back_to_menu_admin())
+            await state.clear()
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите серию, используя кнопки ниже!")
         
 #############################################################################################################################
 
@@ -199,7 +206,8 @@ async def change_product_callback(
     callback: types.CallbackQuery, state: FSMContext, session: AsyncSession
 ):
     product_id = callback.data.split("_")[-1]
-    product_for_change = await get_product(int(product_id))
+    product_for_change = await get_product(session, int(product_id))
+    
     AddProduct.product_for_change = product_for_change
     await callback.answer()
     await callback.message.answer(
@@ -222,33 +230,62 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     current_state = await state.get_state()
     if current_state is None:
         return
+    if AddProduct.product_for_change:
+        AddProduct.product_for_change = None
     await state.clear()
     await message.answer("Действия отменены", reply_markup=await inline.back_to_menu_admin()) 
     
 @admin.message(AddProduct.name, F.text)
 async def add_product_category(message: types.Message, state: FSMContext, session: AsyncSession): 
-    if len(message.text) > 120:
-        await message.answer("Название продукта не должно превышать 120 символов!")
-        return 
-    await state.update_data(name=message.text)
+    if message.text == "." and AddProduct.product_for_change:
+        await state.update_data(name=AddProduct.product_for_change.name)
+    else:
+        if len(message.text) > 120:
+            await message.answer("Название продукта не должно превышать 120 символов!")
+            return 
+        await state.update_data(name=message.text)
     await message.answer("Выберите категорию", reply_markup=await reply.categories())
     await state.set_state(AddProduct.category)
+    
+# Хендлер для отлова некорректных вводов для состояния name
+@admin.message(AddProduct.name)
+async def add_name2(message: types.Message, state: FSMContext):
+    await message.answer("Вы ввели не допустимые данные, введите текст названия товара")
     
     
 @admin.message(AddProduct.category, F.text)
 async def add_product_series(message: types.Message, state: FSMContext, session: AsyncSession):
-    await state.update_data(category=message.text)
-    await message.answer("Выберите серию", reply_markup=await reply.series(message.text))
-    await state.set_state(AddProduct.series)
+    if message.text == "." and AddProduct.product_for_change:
+        await state.update_data(category=AddProduct.product_for_change.category)
+        await message.answer("Выберите серию", reply_markup=await reply.series(message.text))
+        await state.set_state(AddProduct.series)
+    elif str(message.text) in [category.name for category in await get_categories()]:
+        await state.update_data(category=message.text)
+        await message.answer("Выберите серию", reply_markup=await reply.series(message.text))
+        await state.set_state(AddProduct.series)
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите категорию, используя кнопки ниже!")
     
 @admin.message(AddProduct.series, F.text)
 async def add_product_equipment(message: types.Message, state: FSMContext, session: AsyncSession):
-    await state.update_data(series=message.text)
-    await message.answer("Укажите комплектацию или введите 1 для пропуска", reply_markup=types.ReplyKeyboardRemove())
-    await state.set_state(AddProduct.equipment)
+    data = await state.get_data()
+    if message.text == "." and AddProduct.product_for_change:
+        await state.update_data(series=AddProduct.product_for_change.series)
+        await message.answer("Укажите комплектацию или введите 1 для пропуска", 
+                             reply_markup=types.ReplyKeyboardRemove())
+        await state.set_state(AddProduct.equipment)
+    elif str(message.text) in [series.name for series in await get_series_by_categories(data.get("category"))]:
+        await state.update_data(series=message.text)
+        await message.answer("Укажите комплектацию или введите 1 для пропуска", 
+                             reply_markup=types.ReplyKeyboardRemove())
+        await state.set_state(AddProduct.equipment)
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите серию, используя кнопки ниже!")
     
 @admin.message(AddProduct.equipment, F.text)
 async def add_region_name(message: types.Message, state: FSMContext, session: AsyncSession):
+    if message.text == "." and AddProduct.product_for_change:
+        await state.update_data(equipment=AddProduct.product_for_change.equipment)
     if message.text == "1":
         await state.update_data(equipment="")
     else:

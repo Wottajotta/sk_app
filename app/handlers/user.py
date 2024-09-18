@@ -273,7 +273,7 @@ async def send_ticket_to_group(bot, text):
         
 @user.message(AddTicket.documents)
 async def add_ticket_document(message: types.Message, state: FSMContext, session: AsyncSession, bot: Bot):
-    global list_documents
+    global list_documents, list_images, name_list, data_list
     if message.document:
         list_documents.append(message.document.file_id)
     elif message.text == "Закончить формирование заявки":
@@ -286,16 +286,25 @@ async def add_ticket_document(message: types.Message, state: FSMContext, session
             else:
                 await create_ticket(session, data)
                 await send_ticket_to_group(bot, "Новая заявка")
+                
             await message.answer("Успех ✅", reply_markup=types.ReplyKeyboardRemove())
             await message.answer("Заявка успешно отправлена!\n\
 Наши менеджеры уже приступили к обработке, ожидайте!", 
 reply_markup=await inline.back_to_menu())
             await state.clear()
+            list_images.clear()
+            list_documents.clear()
+            name_list.clear()
+            data_list.clear()
         except Exception as e:
             await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
             await message.answer(f"Произошла ошибка: {e}, попробуйте ещё раз", 
                                  reply_markup=await inline.back_to_menu())
             await state.clear()
+            list_images.clear()
+            list_documents.clear()
+            name_list.clear()
+            data_list.clear()
     else:
         await message.answer("Вы ввели недопустимые данные, прикрепите документы!")
 
@@ -325,7 +334,7 @@ async def all_user_tickets(message: types.Message, session: AsyncSession):
 Комментарий: {ticket.not_exist}", 
 reply_markup=inline.get_callback_btns(
            btns={
-               "Показать вложения": f"p-ticket-media_{ticket.id}",
+               "Показать вложения": f"ticket-media_{ticket.id}",
                "Изменить": f"t-change_{ticket.id}",
            },
            sizes=(1,)
@@ -348,10 +357,9 @@ async def get_user_tickets_by_status(message, status):
 Доп. информация: <strong>{ticket.additionally}</strong>\n\
 Комментарий: {ticket.not_exist}"
     , 
-
 reply_markup=inline.get_callback_btns(
            btns={
-               "Показать вложения": f"p-ticket-media_{ticket.id}",
+               "Показать вложения": f"ticket-media_{ticket.id}",
                "Изменить": f"t-change_{ticket.id}",
            },
            sizes=(1,)
@@ -370,21 +378,23 @@ async def all_user_tickets(message: types.Message, session: AsyncSession):
 
 @user.message(F.text=="Отредактированные заявки")
 async def all_user_tickets(message: types.Message, session: AsyncSession):
-    await (await get_user_tickets_by_status(message, "Отредактировано"))
+    await get_user_tickets_by_status(message, "Отредактировано")
     
 ########
 
 @user.message(F.text=="Заявки в работе")
 async def all_user_tickets(message: types.Message, session: AsyncSession):
-    await (await get_user_tickets_by_status(message, "В работе"))
+    await get_user_tickets_by_status(message, "В работе")
     
 ########
 
 @user.message(F.text=="Завершенные заявки")
 async def all_user_tickets(message: types.Message, session: AsyncSession):
-    await (await get_user_tickets_by_status(message, "Завершена"))
+    await get_user_tickets_by_status(message, "Завершена")
     
 ########
+
+
     
 @user.callback_query(F.data.startswith("ticket-media_"))
 async def get_ticket_media(callback: types.CallbackQuery, bot: Bot):
@@ -456,12 +466,5 @@ async def get_finish_ticket_media(callback: types.CallbackQuery, bot: Bot):
 
 #############################################################################################################################
 
-@user.message(F.text)
-async def fake_text(message: types.Message):
-    if message.from_user.id in ADMIN_LIST:
-        await message.answer("Вы отправили текст без назначения!\n\
-Если хотите воспользоваться ботом, пожалуйста, используйте команды:\n<strong>/start - меню пользователя</strong>\n\
-<strong>/admin - админ-панель</strong>")
-    else:
-        await message.answer("Вы отправили текст без назначения!\n\
-Если хотите воспользоваться ботом, пожалуйста, используйте меню -> /start")
+        
+        

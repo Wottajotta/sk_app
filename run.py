@@ -11,7 +11,9 @@ from app.db.engine import async_main, async_session
 from app.handlers.user_group import user_group
 from app.handlers.user import user
 from app.handlers.admin import admin
+from app.handlers.fake_action import fake
 from app.handlers.nomenclature import admin_nomenclature
+from app.handlers.delete import delete
 from app.middleware.db import DataBaseSession
 
 load_dotenv()
@@ -24,7 +26,7 @@ async def main():
     bot = Bot(os.getenv('TOKEN'), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
     
-    dp.include_routers(admin, user, user_group, admin_nomenclature)
+    dp.include_routers(admin, user, fake, user_group, admin_nomenclature, delete)
     
     dp.update.middleware(DataBaseSession(session_pool=async_session))
     

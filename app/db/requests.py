@@ -113,9 +113,9 @@ async def get_products():
         return await session.scalars(select(Product))
     
 # Достаем категории
-async def get_product(id):
+async def get_product(session: AsyncSession, id):
     async with async_session() as session:
-        return await session.scalars(select(Product).where(Product.id==int(id)))
+        return await session.scalar(select(Product).where(Product.id==int(id)))
     
 # Достаем продукт
 async def get_products_сategory(text):

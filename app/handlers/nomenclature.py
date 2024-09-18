@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.context import FSMContext
 
 from app.keyboards import inline, reply
-from common.texts import ticket_texts
 from app.filters.chat_types import ChatTypeFilter, AdminProtect
 
 from app.db.requests import (
@@ -81,7 +80,7 @@ async def active_product_category(callback: types.CallbackQuery, session: AsyncS
 async def active_product(callback: types.CallbackQuery, session: AsyncSession):
    category_id = callback.data.split("_")[-1]
    categories = await get_categories_name(int(category_id))
-   products = await get_products_сategory(categories.name)
+   products = await get_products_сategory(categories)
    for product in products:
        await callback.message.answer(f"Наименование: <strong>{product.name}</strong>\n\
 Категория: <strong>{product.category}</strong>\n\
