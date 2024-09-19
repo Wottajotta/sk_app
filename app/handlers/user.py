@@ -345,7 +345,18 @@ reply_markup=inline.get_callback_btns(
 ########
 async def get_user_tickets_by_status(message, status):    
     all_tickets = await get_tickets_by_id(message.from_user.id)
+    
     for ticket in all_tickets:
+        if status == "Новая" or "Отредактировано" or "В работе":
+            btns={
+            "Показать вложения": f"ticket-media_{ticket.id}",
+            "Изменить": f"t-change_{ticket.id}",
+            }
+        elif status == "Завершена":
+                btns={
+                "Показать вложения" : f"ticket-media_{ticket.id}",
+                "Показать завершающие документы" : f"f-ticket-media_{ticket.id}",
+                }
         if ticket.status == status:
             await message.answer(f"ЗАЯВКА №{ticket.id}\n\n\
 Статус: <strong>{ticket.status}</strong>\n\
@@ -358,10 +369,7 @@ async def get_user_tickets_by_status(message, status):
 Комментарий: {ticket.not_exist}"
     , 
 reply_markup=inline.get_callback_btns(
-           btns={
-               "Показать вложения": f"ticket-media_{ticket.id}",
-               "Изменить": f"t-change_{ticket.id}",
-           },
+           btns=btns,
            sizes=(1,)
        ),)
     
