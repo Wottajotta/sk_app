@@ -19,12 +19,13 @@ async def admin_menu():
         [InlineKeyboardButton(text='Новые заявки ❗', callback_data='tickets_new')],
         [InlineKeyboardButton(text='Заявки в работе 🧾', callback_data='tickets_progress')],
         [InlineKeyboardButton(text='Завершенные заявки ✅', callback_data='tickets_finished')],
-        [InlineKeyboardButton(text='Добавить регионы ➕', callback_data='add_regions')],
+        [InlineKeyboardButton(text='Добавить Регионы ➕', callback_data='add_regions')],
         [InlineKeyboardButton(text='Добавить Категорию ➕', callback_data='add_category')],
         [InlineKeyboardButton(text='Добавить Серию ➕', callback_data='add_series')],
         [InlineKeyboardButton(text='Добавить Продукт ➕', callback_data='add_product')],
         [InlineKeyboardButton(text='Добавить Доп. Опции ➕', callback_data='add_additionally')],
         [InlineKeyboardButton(text='Номенклатура 📦', callback_data='acitve_items')],
+        [InlineKeyboardButton(text='Добавить Администратор', callback_data='add_admin')],
         [InlineKeyboardButton(text='Поддержка 👨🏻‍💻', callback_data="support")],
     ])
 

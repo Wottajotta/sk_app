@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InputMediaPhoto, InputMediaDocument
 
-from app.db.requests import create_ticket, get_additionally, get_additionally_by_category, get_additionally_by_name, get_categories, get_last_ticket, get_products, get_products_by_series, get_regions, get_series, get_series_by_categories, get_ticket, get_tickets_by_id, update_ticket
+from app.db.requests import create_ticket, get_additionally, get_additionally_by_category, get_additionally_by_name, get_categories, get_last_ticket, get_products, get_products_by_series, get_regions, get_series, get_series_by_categories, get_ticket, get_tickets_by_id, set_user, update_ticket
 from app.filters.chat_types import ChatTypeFilter
 from app.handlers.user_group import get_tickets_media
 from app.keyboards import inline, reply
@@ -32,6 +32,7 @@ async def back_to_menu(callback: types.CallbackQuery):
     
 @user.message(CommandStart())
 async def start_cmd(message: types.Message):
+    await set_user(message.from_user.id)
     await message.answer(f"Привет!👋\n\nЭтот бот создан для подачи и обработки региональных заявок в компании «СК УРАЛ»👨🏻‍💼\n\n\
 Чтобы продолжить - Выбери пункт меню ниже👇", reply_markup= await inline.user_menu())
     

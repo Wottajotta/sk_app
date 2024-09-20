@@ -17,7 +17,7 @@ class User(Base):
     tg_id: Mapped[int] = mapped_column(BigInteger)
     username: Mapped[str] = mapped_column(String(40), nullable=True)
     number: Mapped[str] = mapped_column(String(20), nullable=True)
-    
+    isAdmin: Mapped[str] = mapped_column()
 
 class Region(Base):
     __tablename__ = 'regions'

@@ -14,6 +14,20 @@ async def set_user(tg_id):
             session.add(User(tg_id=tg_id))
             await session.commit()
 
+
+async def set_admin(tg_id):
+    async with async_session() as session:
+        query = (
+        update(User)
+        .where(User.id == tg_id)
+        .values(
+            isAdmin="+"
+        )
+    )
+    await session.execute(query)
+    await session.commit()
+    
+
 # Добавляем регион в БД
 async def add_region(session: AsyncSession, data: dict):
     obj = Region(
