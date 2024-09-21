@@ -19,27 +19,25 @@ from app.middleware.db import DataBaseSession
 load_dotenv()
 
 
-
 async def main():
     await async_main()
-    
-    bot = Bot(os.getenv('TOKEN'), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
+    bot = Bot(
+        os.getenv("TOKEN"), default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+    )
     dp = Dispatcher()
-    
+
     dp.include_routers(admin, user, fake, user_group, admin_nomenclature, delete)
-    
+
     dp.update.middleware(DataBaseSession(session_pool=async_session))
-    
+
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 
-  
-    
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print('Бот остановлен!')
-    
+        print("Бот остановлен!")

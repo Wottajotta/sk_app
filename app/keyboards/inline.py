@@ -1,6 +1,8 @@
 from aiogram.types import (InlineKeyboardButton, InlineKeyboardMarkup)
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from app.db.requests import get_users
+
 # Стартовая клавиатура пользователя
 async def user_menu():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -25,7 +27,8 @@ async def admin_menu():
         [InlineKeyboardButton(text='Добавить Продукт ➕', callback_data='add_product')],
         [InlineKeyboardButton(text='Добавить Доп. Опции ➕', callback_data='add_additionally')],
         [InlineKeyboardButton(text='Номенклатура 📦', callback_data='acitve_items')],
-        [InlineKeyboardButton(text='Добавить Администратор', callback_data='add_admin')],
+        [InlineKeyboardButton(text='Добавить Администратора ➕', callback_data='add_admin')],
+        [InlineKeyboardButton(text='Удалить Администратора ➖', callback_data='del_admin')],
         [InlineKeyboardButton(text='Поддержка 👨🏻‍💻', callback_data="support")],
     ])
 
@@ -67,6 +70,32 @@ async def back_to_menu_admin():
     
     return keyboard
 
+async def get_users_inline():
+    users = await get_users()
+        
+    # Создаем инлайн-клавиатуру
+    keyboard = InlineKeyboardBuilder()
+    for user in users:
+        keyboard.add(
+            InlineKeyboardButton(
+            text=f"{user.username}",
+            callback_data=f"set-admin_{user.tg_id}"
+        ))
+    return keyboard.adjust(2).as_markup()
+
+async def get_admins_inline():
+    users = await get_users()
+
+    # Создаем инлайн-клавиатуру
+    keyboard = InlineKeyboardBuilder()
+    for user in users:
+        if user.isAdmin == "+":
+            keyboard.add(
+                InlineKeyboardButton(
+                text=f"{user.username}",
+                callback_data=f"del-admin_{user.tg_id}"
+            ))
+    return keyboard.adjust(2).as_markup()
 
 def get_callback_btns(*, btns: dict[str, str], sizes: tuple[int] = (2,)):
     keyboard = InlineKeyboardBuilder()

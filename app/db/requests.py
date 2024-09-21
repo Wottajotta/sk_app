@@ -5,28 +5,23 @@ from sqlalchemy import select, update, delete
 
 
 #################################### Тут мы set и add #############################################
- 
+
+
 # Добавляем пользователя в БД
-async def set_user(tg_id):
+async def set_user(tg_id, username=None):
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.tg_id == tg_id))
         if not user:
-            session.add(User(tg_id=tg_id))
+            session.add(User(tg_id=tg_id, username=username, isAdmin="-"))
             await session.commit()
 
 
 async def set_admin(tg_id):
     async with async_session() as session:
-        query = (
-        update(User)
-        .where(User.id == tg_id)
-        .values(
-            isAdmin="+"
-        )
-    )
+        query = update(User).where(User.tg_id == int(tg_id)).values(isAdmin="+")
     await session.execute(query)
     await session.commit()
-    
+
 
 # Добавляем регион в БД
 async def add_region(session: AsyncSession, data: dict):
@@ -35,7 +30,8 @@ async def add_region(session: AsyncSession, data: dict):
     )
     session.add(obj)
     await session.commit()
-    
+
+
 # Добавляем категорию в БД
 async def add_category(session: AsyncSession, data: dict):
     obj = Category(
@@ -43,16 +39,15 @@ async def add_category(session: AsyncSession, data: dict):
     )
     session.add(obj)
     await session.commit()
-    
+
+
 # Добавляем серию в БД
 async def add_series(session: AsyncSession, data: dict):
-    obj = Series(
-        name=data["name"],
-        category=data["category"]
-    )
+    obj = Series(name=data["name"], category=data["category"])
     session.add(obj)
     await session.commit()
-    
+
+
 # Добавляем продукт в БД
 async def add_product(session: AsyncSession, data: dict):
     obj = Product(
@@ -64,7 +59,8 @@ async def add_product(session: AsyncSession, data: dict):
 
     session.add(obj)
     await session.commit()
-    
+
+
 async def update_product(session: AsyncSession, ticket_id: int, data):
     query = (
         update(Product)
@@ -78,7 +74,8 @@ async def update_product(session: AsyncSession, ticket_id: int, data):
     )
     await session.execute(query)
     await session.commit()
-    
+
+
 async def add_additionally(session: AsyncSession, data: dict):
     obj = Additionally(
         category=data["category"],
@@ -87,74 +84,125 @@ async def add_additionally(session: AsyncSession, data: dict):
     )
     session.add(obj)
     await session.commit()
-    
+
+
 ###################################################################################################
 
 ############################## Тут мы get, update и delete ########################################
+
+
+async def get_users():
+    async with async_session() as session:
+        return await session.scalars(select(User))
+
+
+async def get_user(tg_id):
+    async with async_session() as session:
+        return await session.scalar(select(User).where(User.tg_id == int(tg_id)))
+
+
+async def get_admins(tg_id):
+    async with async_session() as session:
+        admin_users = await session.scalars(
+            select(User.tg_id).where(User.tg_id == int(tg_id), User.isAdmin == "+")
+        )
+        return admin_users.all()
+
+
+
+async def del_admin(tg_id):
+    async with async_session() as session:
+        query = update(User).where(User.tg_id == int(tg_id)).values(isAdmin="-")
+    await session.execute(query)
+    await session.commit()
+
 
 # Достаем регионы
 async def get_regions():
     async with async_session() as session:
         return await session.scalars(select(Region))
-    
+
+
 async def get_regions_by_id(id):
     async with async_session() as session:
-        return await session.scalar(select(Region).where(Region.id==int(id)))
+        return await session.scalar(select(Region).where(Region.id == int(id)))
+
 
 # Достаем категории
 async def get_categories():
     async with async_session() as session:
         return await session.scalars(select(Category))
-    
+
+
 # Достаем категории
 async def get_categories_name(id):
     async with async_session() as session:
-        return await session.scalar(select(Category.name).where(Category.id==int(id)))
-    
+        return await session.scalar(select(Category.name).where(Category.id == int(id)))
+
+
 # Достаем категории
 async def get_series():
     async with async_session() as session:
         return await session.scalars(select(Series))
-    
+
+
 # Достаем категории
 async def get_series_by_categories(category):
     async with async_session() as session:
-        return await session.scalars(select(Series).where(Series.category==str(category)))
-    
+        return await session.scalars(
+            select(Series).where(Series.category == str(category))
+        )
+
+
 # Достаем категории
 async def get_products():
     async with async_session() as session:
         return await session.scalars(select(Product))
-    
+
+
 # Достаем категории
 async def get_product(session: AsyncSession, id):
     async with async_session() as session:
-        return await session.scalar(select(Product).where(Product.id==int(id)))
-    
+        return await session.scalar(select(Product).where(Product.id == int(id)))
+
+
 # Достаем продукт
 async def get_products_сategory(text):
     async with async_session() as session:
-        return await session.scalars(select(Product).where(Product.category==str(text)))
-    
+        return await session.scalars(
+            select(Product).where(Product.category == str(text))
+        )
+
+
 async def get_products_by_series(text):
     async with async_session() as session:
-        return await session.scalars(select(Product).where(Product.series==str(text)))
-    
+        return await session.scalars(select(Product).where(Product.series == str(text)))
+
+
 # Достаем доп. опции
+
 
 async def get_additionally():
     async with async_session() as session:
         return await session.scalars(select(Additionally))
 
+
 async def get_additionally_by_name(name):
     async with async_session() as session:
-        return await session.scalar(select(Additionally.value).where(Additionally.name==str(name)))
-    
+        return await session.scalar(
+            select(Additionally.value).where(Additionally.name == str(name))
+        )
+
+
 async def get_additionally_by_category(category):
     async with async_session() as session:
-        return await session.scalars(select(Additionally).where(Additionally.category==str(category)))
- 
-###################################################################################################   
+        return await session.scalars(
+            select(Additionally).where(Additionally.category == str(category))
+        )
+
+
+###################################################################################################
+
 
 ##################################### Работа с заявками ###########################################
 async def create_ticket(session: AsyncSession, data: dict):
@@ -172,7 +220,8 @@ async def create_ticket(session: AsyncSession, data: dict):
     )
     session.add(obj)
     await session.commit()
-       
+
+
 async def update_ticket(session: AsyncSession, ticket_id: int, data):
     query = (
         update(Ticket)
@@ -191,7 +240,8 @@ async def update_ticket(session: AsyncSession, ticket_id: int, data):
     )
     await session.execute(query)
     await session.commit()
-    
+
+
 async def finish_ticket(session: AsyncSession, ticket_id: int, data):
     query = (
         update(Ticket)
@@ -203,32 +253,39 @@ async def finish_ticket(session: AsyncSession, ticket_id: int, data):
     )
     await session.execute(query)
     await session.commit()
-    
+
+
 async def get_tickets(session: AsyncSession):
     return await session.scalars(select(Ticket))
+
 
 # Достаем последнюю запись в БД
 async def get_last_ticket():
     async with async_session() as session:
-        result = await session.execute(select(Ticket).order_by(Ticket.id.desc()).limit(1))
+        result = await session.execute(
+            select(Ticket).order_by(Ticket.id.desc()).limit(1)
+        )
         last_ticket = result.scalar_one_or_none()
         return last_ticket
-    
+
+
 # Достаем заявку
 async def get_ticket(id):
     async with async_session() as session:
-        return await session.scalar(select(Ticket).where(Ticket.id==int(id)))
-    
+        return await session.scalar(select(Ticket).where(Ticket.id == int(id)))
+
+
 # Достаем заявки по региону
 async def get_tickets_by_region(region):
     async with async_session() as session:
-        return await session.scalars(select(Ticket).where(Ticket.region==str(region)))
-    
-    
+        return await session.scalars(select(Ticket).where(Ticket.region == str(region)))
+
+
 async def get_tickets_by_id(id):
     async with async_session() as session:
-        return await session.scalars(select(Ticket).where(Ticket.tg_id==int(id)))
-    
+        return await session.scalars(select(Ticket).where(Ticket.tg_id == int(id)))
+
+
 async def update_ticket_status(session: AsyncSession, ticket_id, status: str):
     query = (
         update(Ticket)
@@ -239,50 +296,57 @@ async def update_ticket_status(session: AsyncSession, ticket_id, status: str):
     )
     await session.execute(query)
     await session.commit()
-  
+
+
 async def add_finished_documents(session: AsyncSession, ticket_id, doc_id: str):
     query = (
         update(Ticket)
         .where(Ticket.id == int(ticket_id))
         .values(
-            finish_documents = doc_id,
+            finish_documents=doc_id,
         )
     )
     await session.execute(query)
     await session.commit()
- 
-###################################################################################################   
-    
-    
+
+
+###################################################################################################
+
+
 ##################################### Удаление позиций ############################################
+
 
 async def delete_region(session: AsyncSession, region_id):
     query = delete(Region).where(Region.id == int(region_id))
     await session.execute(query)
     await session.commit()
 
+
 async def delete_category(session: AsyncSession, product_id):
     query = delete(Category).where(Category.id == int(product_id))
     await session.execute(query)
     await session.commit()
-    
+
+
 async def delete_series(session: AsyncSession, product_id):
     query = delete(Series).where(Series.id == int(product_id))
     await session.execute(query)
     await session.commit()
-    
+
+
 async def delete_product(session: AsyncSession, product_id):
     query = delete(Product).where(Product.id == int(product_id))
     await session.execute(query)
     await session.commit()
-    
+
+
 async def delete_additionally(session: AsyncSession, product_id):
     query = delete(Additionally).where(Additionally.id == int(product_id))
     await session.execute(query)
     await session.commit()
-    
+
+
 async def delete_ticket(session: AsyncSession, ticket_id):
     query = delete(Ticket).where(Ticket.id == int(ticket_id))
     await session.execute(query)
     await session.commit()
-    
