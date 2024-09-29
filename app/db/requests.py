@@ -12,13 +12,13 @@ async def set_user(tg_id, username=None):
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.tg_id == tg_id))
         if not user:
-            session.add(User(tg_id=tg_id, username=username, isAdmin="-"))
+            session.add(User(tg_id=tg_id, username=username, is_admin="-"))
             await session.commit()
 
 
 async def set_admin(tg_id):
     async with async_session() as session:
-        query = update(User).where(User.tg_id == int(tg_id)).values(isAdmin="+")
+        query = update(User).where(User.tg_id == int(tg_id)).values(is_admin="+")
     await session.execute(query)
     await session.commit()
 
@@ -104,7 +104,7 @@ async def get_user(tg_id):
 async def get_admins(tg_id):
     async with async_session() as session:
         admin_users = await session.scalars(
-            select(User.tg_id).where(User.tg_id == int(tg_id), User.isAdmin == "+")
+            select(User.tg_id).where(User.tg_id == int(tg_id), User.is_admin == "+")
         )
         return admin_users.all()
 
@@ -112,7 +112,7 @@ async def get_admins(tg_id):
 
 async def del_admin(tg_id):
     async with async_session() as session:
-        query = update(User).where(User.tg_id == int(tg_id)).values(isAdmin="-")
+        query = update(User).where(User.tg_id == int(tg_id)).values(is_admin="-")
     await session.execute(query)
     await session.commit()
 
@@ -159,6 +159,9 @@ async def get_products():
     async with async_session() as session:
         return await session.scalars(select(Product))
 
+async def get_product_equipment(name):
+    async with async_session() as session:
+        return await session.scalar(select(Product.equipment).where(Product.name==name))
 
 # Достаем категории
 async def get_product(session: AsyncSession, id):
@@ -214,6 +217,7 @@ async def create_ticket(session: AsyncSession, data: dict):
         series=data["series"],
         product=data["product"],
         additionally=data["additionally_value"],
+        equipment=data["equipment"],
         not_exist=data["not_exist"],
         images=data["images"],
         documents=data["documents"],
@@ -233,6 +237,7 @@ async def update_ticket(session: AsyncSession, ticket_id: int, data):
             series=data["series"],
             product=data["product"],
             additionally=data["additionally_value"],
+            equipment=data["equipment"],
             not_exist=data["not_exist"],
             images=data["images"],
             documents=data["documents"],

@@ -421,7 +421,7 @@ async def add_product_equipment(
 
 
 @admin.message(AddProduct.equipment, F.text)
-async def add_region_name(
+async def add_product_equipment(
     message: types.Message, state: FSMContext, session: AsyncSession
 ):
     if message.text == "." and AddProduct.product_for_change:
@@ -449,6 +449,7 @@ async def add_region_name(
             reply_markup=await inline.back_to_menu_admin(),
         )
         await state.clear()
+        AddProduct.product_for_change = None
 
 
 #############################################################################################################################

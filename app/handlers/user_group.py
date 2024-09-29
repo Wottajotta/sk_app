@@ -83,6 +83,13 @@ async def get_tickets_media(callback: types.CallbackQuery, bot: Bot):
 ###################################################################################################
 
 #################################### Принятие в работу ############################################
+@user_group.callback_query(F.data.startswith("new-ticket_"))
+async def new_tickets_from_callback(callback: types.CallbackQuery, bot: Bot):
+    await callback.answer()
+    ticket_id = callback.data.split("_")[1]
+    ticket = await get_ticket(ticket_id)
+    await get_one_new_ticket(callback=callback, ticket_id=ticket_id)
+
 @user_group.callback_query(F.data.startswith("new-ticket-to-progress_"))
 async def to_progress_new_ticket(callback: types.CallbackQuery, bot: Bot, session: AsyncSession):
     await callback.answer()
@@ -103,5 +110,4 @@ async def delete_new_ticket(callback: types.CallbackQuery, bot: Bot, session: As
     ticket = await get_ticket(ticket_id)
     await delete_ticket(session, ticket_id)
     await callback.message.edit_text(f"Заявка №{ticket_id} удалена")
-    await bot.send_message(chat_id=group_id[ticket.region], text=f"Заявка №{ticket_id} удалена")
     

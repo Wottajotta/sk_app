@@ -14,6 +14,12 @@ from app.db.requests import (
 )
 
 
+async def add_more_or_continue():
+    keyboard = ReplyKeyboardBuilder()
+    keyboard.add("Добавить ещё")
+    keyboard.add("Закончить")
+    return keyboard.adjust(2).as_markup(resize_keyboard=True)
+
 new_ticket = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="Новая заявка")]],
     resize_keyboard=True,

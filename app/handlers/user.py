@@ -11,6 +11,7 @@ from app.db.requests import (
     get_additionally_by_name,
     get_categories,
     get_last_ticket,
+    get_product_equipment,
     get_products_by_series,
     get_regions,
     get_series_by_categories,
@@ -87,6 +88,7 @@ class AddTicket(StatesGroup):
     category = State()
     series = State()
     product = State()
+    add_more_products = State()
     additionally = State()
     additionally_value = State()
     not_exist = State()
@@ -132,6 +134,10 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     if AddTicket.ticket_for_change:
         AddTicket.ticket_for_change = None
     await state.clear()
+    list_images.clear()
+    list_documents.clear()
+    name_list.clear()
+    data_list.clear()
     await message.answer("Отменяю...", reply_markup=types.ReplyKeyboardRemove())
     await message.answer("Действия отменены", reply_markup=await inline.back_to_menu())
 
@@ -203,37 +209,71 @@ async def add_ticket_product(message: types.Message, state: FSMContext):
     elif str(message.text) in [
         product.name for product in await get_products_by_series(data.get("series"))
     ]:
-        await state.update_data(product=message.text)
+        pr_equipment = await get_product_equipment(message.text)
+        # Добавляем информацию о текущем продукте в список продуктов
+        current_products = data.get("products", [])
+        current_products.append({
+            "category": data.get("category"),
+            "series": data.get("series"),
+            "product": message.text,
+            "equipment": pr_equipment
+        })
+        await state.update_data(products=current_products)
+        
+        # Предлагаем выбор между добавлением нового продукта или завершением
         await message.answer(
-            "Выберите доп. опции\nНажмите на кнопки с нужными названиями и нажмите «Далее»",
-            reply_markup=await reply.additionally_name(data.get("category")),
+            "Хотите добавить ещё один продукт или продолжить?",
+            reply_markup=await reply.add_more_or_continue()  # кнопки: Добавить ещё | Закончить
         )
-        await state.set_state(AddTicket.additionally)
+        await state.set_state(AddTicket.add_more_products)
     else:
         await message.answer(
             "Вы ввели недопустимые данные, выберите продукт, используя кнопки ниже!"
         )
 
 
-# TODO Переделать выбор доп. опций
+@user.message(AddTicket.add_more_products, F.text)
+async def add_more_products_handler(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    if message.text == "Добавить ещё":
+        # Сбрасываем состояние для категории и серии, начинаем заново
+        await message.answer("Выберите категорию", reply_markup=await reply.categories())
+        await state.set_state(AddTicket.category)
+    elif message.text == "Закончить":
+        # Переходим к следующему этапу — выбор дополнительных опций
+        await message.answer(
+            "Выберите доп. опции\nНажмите на кнопки с нужными названиями и нажмите «Далее»",
+            reply_markup=await reply.additionally_name(data.get("category")),
+        )
+        await state.set_state(AddTicket.additionally)
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите действие, используя кнопки ниже!")
+
+
+
 @user.message(AddTicket.additionally)
 async def add_ticket_additionally(
     message: types.Message, state: FSMContext, session: AsyncSession
 ):
     global name_list
     data = await state.get_data()
+    current_products = data.get("products", [])
 
     if message.text == "." and AddTicket.ticket_for_change:
-        await state.update_data(product=AddTicket.ticket_for_change.additionally)
+        await state.update_data(additionally=AddTicket.ticket_for_change.additionally)
     # Проверка на "Далее"
     if message.text.strip() == "Далее":
         if not name_list:
             await message.reply("Вы не ввели ни одного названия.")
             return
 
+        # Сохраняем доп. опции для всех продуктов
+        for product in current_products:
+            product["additionally"] = name_list  # Сохраняем доп. опции
+
         await state.set_state(AddTicket.additionally_value)
         await process_next_name(message, state)
-        return  # Завершение функции после обработки "Далее"
+        return
 
     # Проверка на наличие текста в списке дополнительных опций
     additionally_options = [
@@ -247,6 +287,7 @@ async def add_ticket_additionally(
         await message.answer(
             "Вы ввели недопустимые данные, выберите доп. опции, используя кнопки ниже!"
         )
+
 
 
 async def process_next_name(message: types.Message, state: FSMContext):
@@ -405,6 +446,7 @@ async def add_ticket_document(
 
             # Очищаем состояния и списки
             await state.clear()
+            AddTicket.ticket_for_change = None
             list_images.clear()
             list_documents.clear()
             name_list.clear()
@@ -417,6 +459,7 @@ async def add_ticket_document(
                 reply_markup=await inline.back_to_menu(),
             )
             await state.clear()
+            AddTicket.ticket_for_change = None
             list_images.clear()
             list_documents.clear()
             name_list.clear()
@@ -424,6 +467,7 @@ async def add_ticket_document(
 
     else:
         await message.answer("Вы ввели недопустимые данные, прикрепите документы!")
+
 
 
 #############################################################################################################################
