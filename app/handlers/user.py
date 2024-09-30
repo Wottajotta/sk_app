@@ -27,6 +27,11 @@ from common.texts.group import group_id
 
 user = Router()
 
+list_caterory = []
+list_series = []
+list_product = []
+list_additionaly = []
+list_equipment = []
 list_images = []
 list_documents = []
 
@@ -134,6 +139,10 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     if AddTicket.ticket_for_change:
         AddTicket.ticket_for_change = None
     await state.clear()
+    list_caterory.clear()
+    list_series.clear()
+    list_product.clear()
+    list_additionaly.clear()
     list_images.clear()
     list_documents.clear()
     name_list.clear()
@@ -168,10 +177,12 @@ async def add_ticket_region(message: types.Message, state: FSMContext):
 
 @user.message(AddTicket.category, F.text)
 async def add_ticket_category(message: types.Message, state: FSMContext):
+    global list_caterory
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(category=AddTicket.ticket_for_change.category)
     elif str(message.text) in [category.name for category in await get_categories()]:
-        await state.update_data(category=message.text)
+        list_caterory.append(message.text)
+        #await state.update_data(category=message.text)
         await message.answer(
             "Выберите серию", reply_markup=await reply.series(message.text)
         )
@@ -184,13 +195,15 @@ async def add_ticket_category(message: types.Message, state: FSMContext):
 
 @user.message(AddTicket.series, F.text)
 async def add_ticket_series(message: types.Message, state: FSMContext):
+    global list_series
     data = await state.get_data()
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(series=AddTicket.ticket_for_change.series)
     elif str(message.text) in [
         series.name for series in await get_series_by_categories(data.get("category"))
     ]:
-        await state.update_data(series=message.text)
+        list_series.append(message.text)
+        #await state.update_data(series=message.text)
         await message.answer(
             "Выберите продукт", reply_markup=await reply.product(message.text)
         )
@@ -211,14 +224,9 @@ async def add_ticket_product(message: types.Message, state: FSMContext):
     ]:
         pr_equipment = await get_product_equipment(message.text)
         # Добавляем информацию о текущем продукте в список продуктов
-        current_products = data.get("products", [])
-        current_products.append({
-            "category": data.get("category"),
-            "series": data.get("series"),
-            "product": message.text,
-            "equipment": pr_equipment
-        })
-        await state.update_data(products=current_products)
+        list_product.append(message.text)
+        list_equipment.append(pr_equipment)
+        #await state.update_data(products=message.text)
         
         # Предлагаем выбор между добавлением нового продукта или завершением
         await message.answer(
@@ -257,7 +265,6 @@ async def add_ticket_additionally(
 ):
     global name_list
     data = await state.get_data()
-    current_products = data.get("products", [])
 
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(additionally=AddTicket.ticket_for_change.additionally)
