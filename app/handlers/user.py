@@ -227,37 +227,14 @@ async def add_ticket_product(message: types.Message, state: FSMContext):
         list_product.append(message.text)
         list_equipment.append(pr_equipment)
         #await state.update_data(products=message.text)
-        
-        # Предлагаем выбор между добавлением нового продукта или завершением
-        await message.answer(
-            "Хотите добавить ещё один продукт или продолжить?",
-            reply_markup=await reply.add_more_or_continue()  # кнопки: Добавить ещё | Закончить
-        )
-        await state.set_state(AddTicket.add_more_products)
-    else:
-        await message.answer(
-            "Вы ввели недопустимые данные, выберите продукт, используя кнопки ниже!"
-        )
-
-
-@user.message(AddTicket.add_more_products, F.text)
-async def add_more_products_handler(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    if message.text == "Добавить ещё":
-        # Сбрасываем состояние для категории и серии, начинаем заново
-        await message.answer("Выберите категорию", reply_markup=await reply.categories())
-        await state.set_state(AddTicket.category)
-    elif message.text == "Закончить":
-        # Переходим к следующему этапу — выбор дополнительных опций
         await message.answer(
             "Выберите доп. опции\nНажмите на кнопки с нужными названиями и нажмите «Далее»",
             reply_markup=await reply.additionally_name(data.get("category")),
         )
-        await state.set_state(AddTicket.additionally)
     else:
-        await message.answer("Вы ввели недопустимые данные, выберите действие, используя кнопки ниже!")
-
-
+        await message.answer(
+            "Вы ввели недопустимые данные, выберите продукт, используя кнопки ниже!"
+        )
 
 @user.message(AddTicket.additionally)
 async def add_ticket_additionally(
@@ -273,10 +250,6 @@ async def add_ticket_additionally(
         if not name_list:
             await message.reply("Вы не ввели ни одного названия.")
             return
-
-        # Сохраняем доп. опции для всех продуктов
-        for product in current_products:
-            product["additionally"] = name_list  # Сохраняем доп. опции
 
         await state.set_state(AddTicket.additionally_value)
         await process_next_name(message, state)
@@ -298,6 +271,7 @@ async def add_ticket_additionally(
 
 
 async def process_next_name(message: types.Message, state: FSMContext):
+    global list_additionaly
     if name_list:
         current_name = name_list.pop(0)
         await message.answer(
@@ -308,12 +282,13 @@ async def process_next_name(message: types.Message, state: FSMContext):
     else:
         all_data = ", ".join(data_list)
         await state.update_data(additionally_value=all_data)
+        list_additionaly.append("| ".join(all_data))
+        # Предлагаем выбор между добавлением нового продукта или завершением
         await message.answer(
-            "Напишите комментарий к заявке или введите цифру 1 для пропуска",
-            reply_markup=types.ReplyKeyboardRemove(),
+            "Хотите добавить ещё один продукт или продолжить?",
+            reply_markup=await reply.add_more_or_continue()  # кнопки: Добавить ещё | Завершить
         )
-        await state.set_state(AddTicket.not_exist)
-
+        await state.set_state(AddTicket.add_more_products)
 
 @user.message(AddTicket.additionally_value)
 async def add_ticket_additionally_value(
@@ -338,6 +313,24 @@ async def add_ticket_additionally_value(
         await message.answer(
             "Вы ввели недопустимые данные, выберите значение доп. опции, используя кнопки ниже!"
         )
+
+@user.message(AddTicket.add_more_products, F.text)
+async def add_more_products_handler(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    if message.text == "Добавить ещё":
+        # Сбрасываем состояние для категории и серии, начинаем заново
+        await message.answer("Выберите категорию", reply_markup=await reply.categories())
+        await state.set_state(AddTicket.category)
+    elif message.text == "Закончить":
+        # Переходим к следующему этапу — выбор дополнительных опций
+        await message.answer(
+            "Напишите комментарий к заявке или введите цифру 1 для пропуска",
+            reply_markup=types.ReplyKeyboardRemove(),
+        )
+        await state.set_state(AddTicket.not_exist)
+
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите действие, используя кнопки ниже!")
 
 
 @user.message(AddTicket.not_exist)
@@ -424,7 +417,7 @@ async def send_ticket_to_group(bot, text):
 async def add_ticket_document(
     message: types.Message, state: FSMContext, session: AsyncSession, bot: Bot
 ):
-    global list_documents, list_images, name_list, data_list
+    global list_caterory, list_series, list_product, list_additionaly, list_documents, list_images, name_list, data_list
 
     # Проверяем, есть ли прикрепленный документ
     if message.document:
@@ -432,7 +425,12 @@ async def add_ticket_document(
 
     # Проверяем, завершил ли пользователь формирование заявки
     elif message.text == "Закончить формирование заявки":
+        await state.update_data(category="; ".join(list_caterory))
+        await state.update_data(series="; ".join(list_series))
+        await state.update_data(product="; ".join(list_product))
+        await state.update_data(additionally_value="; ".join(list_additionaly))
         await state.update_data(documents=", ".join(list_documents))
+
         data = await state.get_data()
 
         try:
