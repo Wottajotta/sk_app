@@ -195,12 +195,11 @@ async def add_ticket_category(message: types.Message, state: FSMContext):
 
 @user.message(AddTicket.series, F.text)
 async def add_ticket_series(message: types.Message, state: FSMContext):
-    global list_series
-    data = await state.get_data()
+    global list_caterory, list_series
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(series=AddTicket.ticket_for_change.series)
     elif str(message.text) in [
-        series.name for series in await get_series_by_categories(data.get("category"))
+        series.name for series in await get_series_by_categories(list_caterory[-1])
     ]:
         list_series.append(message.text)
         #await state.update_data(series=message.text)
@@ -216,11 +215,11 @@ async def add_ticket_series(message: types.Message, state: FSMContext):
 
 @user.message(AddTicket.product, F.text)
 async def add_ticket_product(message: types.Message, state: FSMContext):
-    data = await state.get_data()
+    global list_series, list_product, list_equipment
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(product=AddTicket.ticket_for_change.product)
     elif str(message.text) in [
-        product.name for product in await get_products_by_series(data.get("series"))
+        product.name for product in await get_products_by_series(list_series[-1])
     ]:
         pr_equipment = await get_product_equipment(message.text)
         # Добавляем информацию о текущем продукте в список продуктов
@@ -229,7 +228,7 @@ async def add_ticket_product(message: types.Message, state: FSMContext):
         #await state.update_data(products=message.text)
         await message.answer(
             "Выберите доп. опции\nНажмите на кнопки с нужными названиями и нажмите «Далее»",
-            reply_markup=await reply.additionally_name(data.get("category")),
+            reply_markup=await reply.additionally_name(list_caterory[-1]),
         )
     else:
         await message.answer(
@@ -240,8 +239,7 @@ async def add_ticket_product(message: types.Message, state: FSMContext):
 async def add_ticket_additionally(
     message: types.Message, state: FSMContext, session: AsyncSession
 ):
-    global name_list
-    data = await state.get_data()
+    global name_list, list_caterory
 
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(additionally=AddTicket.ticket_for_change.additionally)
@@ -258,7 +256,7 @@ async def add_ticket_additionally(
     # Проверка на наличие текста в списке дополнительных опций
     additionally_options = [
         additionally.name
-        for additionally in await get_additionally_by_category(data.get("category"))
+        for additionally in await get_additionally_by_category(list_caterory[-1])
     ]
 
     if message.text.strip() in additionally_options:
@@ -417,7 +415,7 @@ async def send_ticket_to_group(bot, text):
 async def add_ticket_document(
     message: types.Message, state: FSMContext, session: AsyncSession, bot: Bot
 ):
-    global list_caterory, list_series, list_product, list_additionaly, list_documents, list_images, name_list, data_list
+    global list_caterory, list_series, list_product, list_additionaly, list_equipment, list_documents, list_images, name_list, data_list
 
     # Проверяем, есть ли прикрепленный документ
     if message.document:
@@ -428,6 +426,7 @@ async def add_ticket_document(
         await state.update_data(category="; ".join(list_caterory))
         await state.update_data(series="; ".join(list_series))
         await state.update_data(product="; ".join(list_product))
+        await state.update_data(equipment="; ".join(list_equipment))
         await state.update_data(additionally_value="; ".join(list_additionaly))
         await state.update_data(documents=", ".join(list_documents))
 
