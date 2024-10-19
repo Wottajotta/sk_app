@@ -10,6 +10,9 @@ from app.db.requests import (
     get_additionally_by_category,
     get_additionally_by_name,
     get_categories,
+    get_contractors,
+    get_contractors_by_region,
+    get_contractors_region,
     get_last_ticket,
     get_product_equipment,
     get_products_by_series,
@@ -27,6 +30,13 @@ from common.texts.group import group_id
 
 user = Router()
 
+list_contractor = []
+list_caterory = []
+list_series = []
+list_product = []
+list_additionaly = []
+list_equipment = []
+list_comment = []
 list_images = []
 list_documents = []
 
@@ -40,6 +50,7 @@ user.message.filter(ChatTypeFilter(["private"]))
 ############################################### /start #####################################################################################
 @user.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: types.CallbackQuery):
+    await clearGlobal()
     await callback.message.edit_text(
         f"Привет!👋\n\nЭтот бот создан для подачи и обработки региональных заявок в компании «СК УРАЛ»👨🏻‍💼\n\n\
 Чтобы продолжить - Выбери пункт меню ниже👇",
@@ -50,6 +61,7 @@ async def back_to_menu(callback: types.CallbackQuery):
 @user.message(CommandStart())
 async def start_cmd(message: types.Message):
     await set_user(message.from_user.id, message.from_user.username)
+    await clearGlobal()
     await message.answer(
         f"Привет!👋\n\nЭтот бот создан для подачи и обработки региональных заявок в компании «СК УРАЛ»👨🏻‍💼\n\n\
 Чтобы продолжить - Выбери пункт меню ниже👇",
@@ -59,6 +71,7 @@ async def start_cmd(message: types.Message):
 
 @user.message(Command("help"))
 async def help_cmd(message: types.Message):
+    await clearGlobal()
     await message.answer(
         f"🤖 Бот-обработчик заявок создан и внедрен техническим отделом компании «СК УРАЛ»\n\n\
 👨🏻‍💻 Разработчик/ТП: {admin_contact.text}",
@@ -75,7 +88,6 @@ async def help_cmd(callback: types.CallbackQuery):
         reply_markup=await inline.back_to_menu_from_help(),
     )
 
-
 ############################################################################################################################################
 
 
@@ -85,18 +97,39 @@ async def help_cmd(callback: types.CallbackQuery):
 class AddTicket(StatesGroup):
     user_id = State()
     region = State()
+    contractor = State()
+    client = State()
+    number = State()
+    adress = State()
+    date = State()
     category = State()
     series = State()
     product = State()
     add_more_products = State()
     additionally = State()
     additionally_value = State()
+    comment = State()
     not_exist = State()
     images = State()
     documents = State()
 
     ticket_for_change = None
 
+
+async def clearGlobal():
+    global list_contractor, list_caterory, list_series, list_product, list_additionaly, list_equipment, list_comment, list_documents, list_images, name_list, data_list
+
+    list_contractor.clear()
+    list_caterory.clear()
+    list_series.clear()
+    list_product.clear()
+    list_additionaly.clear()
+    list_equipment.clear()
+    list_comment.clear()
+    list_images.clear()
+    list_documents.clear()
+    name_list.clear()
+    data_list.clear()
 
 @user.callback_query(StateFilter(None), F.data.startswith("t-change_"))
 async def change_ticket_callback(
@@ -134,10 +167,7 @@ async def cancel_handler(message: types.Message, state: FSMContext) -> None:
     if AddTicket.ticket_for_change:
         AddTicket.ticket_for_change = None
     await state.clear()
-    list_images.clear()
-    list_documents.clear()
-    name_list.clear()
-    data_list.clear()
+    await clearGlobal()
     await message.answer("Отменяю...", reply_markup=types.ReplyKeyboardRemove())
     await message.answer("Действия отменены", reply_markup=await inline.back_to_menu())
 
@@ -154,24 +184,93 @@ async def add_ticket_user_id(message: types.Message, state: FSMContext):
 async def add_ticket_region(message: types.Message, state: FSMContext):
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(region=AddTicket.ticket_for_change.region)
-    elif str(message.text) in [region.name for region in await get_regions()]:
+    elif message.text=="Ярославль":
+        await state.update_data(region=message.text)
+        await state.set_state(AddTicket.client)
+        await message.answer("Введите данные покупателя", reply_markup=types.ReplyKeyboardRemove())       
+    elif str(message.text) in [region for region in await get_contractors_region()]:
         await state.update_data(region=message.text)
         await message.answer(
-            "Выберите категорию", reply_markup=await reply.categories()
+            "Выберите контрагента(-ов) и нажмите на кнопку Далее", reply_markup=await reply.contractors(message.text)
         )
-        await state.set_state(AddTicket.category)
+        await state.set_state(AddTicket.contractor)
     else:
         await message.answer(
             "Вы ввели недопустимые данные, выберите регион, используя кнопки ниже!"
         )
 
 
+@user.message(AddTicket.contractor)
+async def add_ticket_contractor(message: types.Message, state: FSMContext):
+    global list_contractor
+    if message.text == "." and AddTicket.ticket_for_change:
+        await state.update_data(contractor=AddTicket.ticket_for_change.contractor)
+    elif message.text and message.text !="Далее":
+        if str(message.text) in [contractor.name for contractor in await get_contractors()]:
+            list_contractor.append(message.text)
+    elif message.text == "Далее":
+        await state.update_data(contractor="▐ ".join(list_contractor))
+        await message.answer("Введите данные покупателя или введите 1 для пропуска", reply_markup=types.ReplyKeyboardRemove())  
+        await state.set_state(AddTicket.client)
+    else:
+        await message.answer(
+            "Вы ввели недопустимые данные, выберите контрагента, используя кнопки ниже!"
+        )
+        
+@user.message(AddTicket.client, F.text)
+async def add_ticket_client(message: types.Message, state: FSMContext):
+    if message.text == "." and AddTicket.ticket_for_change:
+        await state.update_data(contractor=AddTicket.ticket_for_change.client)
+    elif message.text == "1":
+        await state.update_data(client="")
+    else:
+        await state.update_data(client=message.text)
+    await message.answer("Введите номер телефона покупателя (80000000000) или введите 1 для пропуска")
+    await state.set_state(AddTicket.number)
+
+@user.message(AddTicket.number, F.text)
+async def add_ticket_number(message: types.Message, state: FSMContext):
+    if message.text == "." and AddTicket.ticket_for_change:
+        await state.update_data(contractor=AddTicket.ticket_for_change.number)
+    elif len(message.text) > 11:
+        await message.answer("Номер телефона состоит из 10 символов и знака \'+\', введите корректный номер телефона")
+        return
+    elif message.text == "1":
+        await state.update_data(number="")
+    else:
+        await state.update_data(number=message.text)
+    await message.answer("Введите адрес или введите 1 для пропуска")
+    await state.set_state(AddTicket.adress)
+    
+@user.message(AddTicket.adress, F.text)
+async def add_ticket_adress(message: types.Message, state: FSMContext):
+    if message.text == "." and AddTicket.ticket_for_change:
+        await state.update_data(adress=AddTicket.ticket_for_change.adress)
+    elif message.text == "1":
+        await state.update_data(number="")
+    else:
+        await state.update_data(adress=message.text)
+    await message.answer("Введите планируемую дату отгрузки или введите 1 для пропуска")
+    await state.set_state(AddTicket.date)
+    
+@user.message(AddTicket.date, F.text)
+async def add_ticket_date(message: types.Message, state: FSMContext):
+    if message.text == "." and AddTicket.ticket_for_change:
+        await state.update_data(date=AddTicket.ticket_for_change.date)
+    elif message.text == "1":
+        await state.update_data(number="")
+    else:
+        await state.update_data(date=message.text)
+    await message.answer("Выберите категорию", reply_markup=await reply.categories())
+    await state.set_state(AddTicket.category)
+
 @user.message(AddTicket.category, F.text)
 async def add_ticket_category(message: types.Message, state: FSMContext):
+    global list_caterory
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(category=AddTicket.ticket_for_change.category)
     elif str(message.text) in [category.name for category in await get_categories()]:
-        await state.update_data(category=message.text)
+        list_caterory.append(message.text)
         await message.answer(
             "Выберите серию", reply_markup=await reply.series(message.text)
         )
@@ -184,13 +283,13 @@ async def add_ticket_category(message: types.Message, state: FSMContext):
 
 @user.message(AddTicket.series, F.text)
 async def add_ticket_series(message: types.Message, state: FSMContext):
-    data = await state.get_data()
+    global list_caterory, list_series
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(series=AddTicket.ticket_for_change.series)
     elif str(message.text) in [
-        series.name for series in await get_series_by_categories(data.get("category"))
+        series.name for series in await get_series_by_categories(list_caterory[-1])
     ]:
-        await state.update_data(series=message.text)
+        list_series.append(message.text)
         await message.answer(
             "Выберите продукт", reply_markup=await reply.product(message.text)
         )
@@ -203,61 +302,30 @@ async def add_ticket_series(message: types.Message, state: FSMContext):
 
 @user.message(AddTicket.product, F.text)
 async def add_ticket_product(message: types.Message, state: FSMContext):
-    data = await state.get_data()
+    global list_series, list_product, list_equipment
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(product=AddTicket.ticket_for_change.product)
     elif str(message.text) in [
-        product.name for product in await get_products_by_series(data.get("series"))
+        product.name for product in await get_products_by_series(list_series[-1])
     ]:
         pr_equipment = await get_product_equipment(message.text)
-        # Добавляем информацию о текущем продукте в список продуктов
-        current_products = data.get("products", [])
-        current_products.append({
-            "category": data.get("category"),
-            "series": data.get("series"),
-            "product": message.text,
-            "equipment": pr_equipment
-        })
-        await state.update_data(products=current_products)
-        
-        # Предлагаем выбор между добавлением нового продукта или завершением
+        list_product.append(message.text)
+        list_equipment.append(pr_equipment)
         await message.answer(
-            "Хотите добавить ещё один продукт или продолжить?",
-            reply_markup=await reply.add_more_or_continue()  # кнопки: Добавить ещё | Закончить
+            "Выберите доп. опции\nНажмите на кнопки с нужными названиями и нажмите «Далее»",
+            reply_markup=await reply.additionally_name(list_caterory[-1]),
         )
-        await state.set_state(AddTicket.add_more_products)
+        await state.set_state(AddTicket.additionally)
     else:
         await message.answer(
             "Вы ввели недопустимые данные, выберите продукт, используя кнопки ниже!"
         )
 
-
-@user.message(AddTicket.add_more_products, F.text)
-async def add_more_products_handler(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    if message.text == "Добавить ещё":
-        # Сбрасываем состояние для категории и серии, начинаем заново
-        await message.answer("Выберите категорию", reply_markup=await reply.categories())
-        await state.set_state(AddTicket.category)
-    elif message.text == "Закончить":
-        # Переходим к следующему этапу — выбор дополнительных опций
-        await message.answer(
-            "Выберите доп. опции\nНажмите на кнопки с нужными названиями и нажмите «Далее»",
-            reply_markup=await reply.additionally_name(data.get("category")),
-        )
-        await state.set_state(AddTicket.additionally)
-    else:
-        await message.answer("Вы ввели недопустимые данные, выберите действие, используя кнопки ниже!")
-
-
-
 @user.message(AddTicket.additionally)
 async def add_ticket_additionally(
     message: types.Message, state: FSMContext, session: AsyncSession
 ):
-    global name_list
-    data = await state.get_data()
-    current_products = data.get("products", [])
+    global name_list, list_caterory
 
     if message.text == "." and AddTicket.ticket_for_change:
         await state.update_data(additionally=AddTicket.ticket_for_change.additionally)
@@ -267,18 +335,13 @@ async def add_ticket_additionally(
             await message.reply("Вы не ввели ни одного названия.")
             return
 
-        # Сохраняем доп. опции для всех продуктов
-        for product in current_products:
-            product["additionally"] = name_list  # Сохраняем доп. опции
-
         await state.set_state(AddTicket.additionally_value)
         await process_next_name(message, state)
         return
 
-    # Проверка на наличие текста в списке дополнительных опций
     additionally_options = [
         additionally.name
-        for additionally in await get_additionally_by_category(data.get("category"))
+        for additionally in await get_additionally_by_category(list_caterory[-1])
     ]
 
     if message.text.strip() in additionally_options:
@@ -288,9 +351,8 @@ async def add_ticket_additionally(
             "Вы ввели недопустимые данные, выберите доп. опции, используя кнопки ниже!"
         )
 
-
-
 async def process_next_name(message: types.Message, state: FSMContext):
+    global list_additionaly
     if name_list:
         current_name = name_list.pop(0)
         await message.answer(
@@ -300,13 +362,26 @@ async def process_next_name(message: types.Message, state: FSMContext):
         await state.update_data(current_name=current_name)
     else:
         all_data = ", ".join(data_list)
-        await state.update_data(additionally_value=all_data)
-        await message.answer(
-            "Напишите комментарий к заявке или введите цифру 1 для пропуска",
-            reply_markup=types.ReplyKeyboardRemove(),
-        )
-        await state.set_state(AddTicket.not_exist)
-
+        list_additionaly.append(all_data)
+        data_list.clear()
+        await message.answer("Укажите комментарий по продукту или введите 1 для пропуска", reply_markup=types.ReplyKeyboardRemove())
+        await state.set_state(AddTicket.comment)
+        
+        
+@user.message(AddTicket.comment, F.text)
+async def add_ticket_comment(message: types.Message, state: FSMContext):
+    global list_comment
+    if message.text == "." and AddTicket.ticket_for_change:
+        await state.update_data(comment=AddTicket.ticket_for_change.comment)
+    elif message.text == "1":
+        await state.update_data(comment="")
+    else:
+        list_comment.append(message.text)
+    await message.answer(
+         "Хотите добавить ещё один продукт или продолжить?",
+        reply_markup=await reply.add_more_or_continue()  # кнопки: Добавить ещё | Завершить
+    )
+    await state.set_state(AddTicket.add_more_products)
 
 @user.message(AddTicket.additionally_value)
 async def add_ticket_additionally_value(
@@ -331,6 +406,23 @@ async def add_ticket_additionally_value(
         await message.answer(
             "Вы ввели недопустимые данные, выберите значение доп. опции, используя кнопки ниже!"
         )
+
+@user.message(AddTicket.add_more_products, F.text)
+async def add_more_products_handler(message: types.Message, state: FSMContext):
+    if message.text == "Добавить ещё":
+        # Сбрасываем состояние для категории и серии, начинаем заново
+        await message.answer("Выберите категорию", reply_markup=await reply.categories())
+        await state.set_state(AddTicket.category)
+    elif message.text == "Следующий шаг":
+        # Переходим к следующему этапу — выбор дополнительных опций
+        await message.answer(
+            "Напишите комментарий к заявке или введите цифру 1 для пропуска",
+            reply_markup=types.ReplyKeyboardRemove(),
+        )
+        await state.set_state(AddTicket.not_exist)
+
+    else:
+        await message.answer("Вы ввели недопустимые данные, выберите действие, используя кнопки ниже!")
 
 
 @user.message(AddTicket.not_exist)
@@ -363,16 +455,17 @@ async def add_ticket_not_exist(
 async def add_ticket_images(
     message: types.Message, state: FSMContext, session: AsyncSession
 ):
+    global list_images
     if message.text == "Без фото":
         await state.update_data(images="")
+        list_images.clear()
         btns = ["Закончить формирование заявки"]
         await message.answer(
             "Приложите документ и нажмите на кнопку: Закончить формирование заявки",
             reply_markup=reply.get_callback_btns(btns=btns),
         )
         await state.set_state(AddTicket.documents)
-    global list_images
-    if message.photo:
+    elif message.photo:
         photo = message.photo[-1].file_id
         list_images.append(photo)
     elif message.text == "Закончить фотоотчет":
@@ -412,12 +505,11 @@ async def send_ticket_to_group(bot, text):
             ),
         )
 
-
 @user.message(AddTicket.documents)
 async def add_ticket_document(
     message: types.Message, state: FSMContext, session: AsyncSession, bot: Bot
 ):
-    global list_documents, list_images, name_list, data_list
+    global list_caterory, list_series, list_product, list_additionaly, list_equipment, list_documents, list_images, name_list, data_list
 
     # Проверяем, есть ли прикрепленный документ
     if message.document:
@@ -425,7 +517,14 @@ async def add_ticket_document(
 
     # Проверяем, завершил ли пользователь формирование заявки
     elif message.text == "Закончить формирование заявки":
+        await state.update_data(category="▐ ".join(list_caterory))
+        await state.update_data(series="▐ ".join(list_series))
+        await state.update_data(product="▐ ".join(list_product))
+        await state.update_data(equipment="▐ ".join(list_equipment))
+        await state.update_data(additionally_value="▐ ".join(list_additionaly))
+        await state.update_data(comment="▐ ".join(list_comment))
         await state.update_data(documents=", ".join(list_documents))
+
         data = await state.get_data()
 
         try:
@@ -447,10 +546,7 @@ async def add_ticket_document(
             # Очищаем состояния и списки
             await state.clear()
             AddTicket.ticket_for_change = None
-            list_images.clear()
-            list_documents.clear()
-            name_list.clear()
-            data_list.clear()
+            await clearGlobal()
 
         except Exception as e:
             await message.answer("Неудача ❌", reply_markup=types.ReplyKeyboardRemove())
@@ -460,10 +556,7 @@ async def add_ticket_document(
             )
             await state.clear()
             AddTicket.ticket_for_change = None
-            list_images.clear()
-            list_documents.clear()
-            name_list.clear()
-            data_list.clear()
+            await clearGlobal()
 
     else:
         await message.answer("Вы ввели недопустимые данные, прикрепите документы!")

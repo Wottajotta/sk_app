@@ -18,6 +18,12 @@ class User(Base):
     number: Mapped[str] = mapped_column(String(20), nullable=True)
     is_admin: Mapped[str] = mapped_column(String(2), nullable=True)
 
+class Contractor(Base):
+    __tablename__ = "contractors"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    region: Mapped[str] = mapped_column(String(40), nullable=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=True)
 
 class Region(Base):
     __tablename__ = "regions"
@@ -65,15 +71,22 @@ class Ticket(Base):
     __tablename__ = "tickets"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    status: Mapped[str] = mapped_column(String(25), nullable=True)
+    status: Mapped[str] = mapped_column(Text, nullable=True)
     tg_id = mapped_column(BigInteger)
-    region: Mapped[str] = mapped_column(String(128), nullable=True)
-    category: Mapped[str] = mapped_column(String(25), nullable=True)
-    series: Mapped[str] = mapped_column(String(25), nullable=True)
-    product: Mapped[str] = mapped_column(String(120), nullable=True)
-    equipment: Mapped[str] = mapped_column(String(128), nullable=True)
+    region: Mapped[str] = mapped_column(Text, nullable=True)
+    contractor: Mapped[str] = mapped_column(Text, nullable=True)
+    client: Mapped[str] = mapped_column(Text, nullable=True)
+    number: Mapped[str] = mapped_column(String(11), nullable=True)
+    adress: Mapped[str] = mapped_column(Text, nullable=True)
+    date: Mapped[str] = mapped_column(Text, nullable=True)
+    category: Mapped[str] = mapped_column(Text, nullable=True)
+    series: Mapped[str] = mapped_column(Text, nullable=True)
+    product: Mapped[str] = mapped_column(Text, nullable=True)
+    equipment: Mapped[str] = mapped_column(Text, nullable=True)
     additionally: Mapped[str] = mapped_column(Text, nullable=True)
+    comment: Mapped[str] = mapped_column(Text, nullable=True)
     not_exist: Mapped[str] = mapped_column(Text, nullable=True)
     images: Mapped[str] = mapped_column(Text, nullable=True)
     documents: Mapped[str] = mapped_column(Text, nullable=True)
     finish_documents: Mapped[str] = mapped_column(Text, nullable=True)
+    

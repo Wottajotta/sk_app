@@ -29,6 +29,7 @@ async def admin_menu():
         [InlineKeyboardButton(text='Номенклатура 📦', callback_data='acitve_items')],
         [InlineKeyboardButton(text='Добавить Администратора ➕', callback_data='add_admin')],
         [InlineKeyboardButton(text='Удалить Администратора ➖', callback_data='del_admin')],
+        [InlineKeyboardButton(text='Добавить Контрагента ➕', callback_data='add_contractor')],
         [InlineKeyboardButton(text='Поддержка 👨🏻‍💻', callback_data="support")],
     ])
 
@@ -41,6 +42,7 @@ async def active_items():
         [InlineKeyboardButton(text='Серия 🗂️', callback_data='active_series')],
         [InlineKeyboardButton(text='Продукция 📦', callback_data='active_product')],
         [InlineKeyboardButton(text='Доп. опции 🧰', callback_data='active_additionally')],
+        [InlineKeyboardButton(text='Контрагенты 🤵', callback_data='active_contractors')],
     ])
 
     return keyboard

@@ -98,7 +98,7 @@ async def to_progress_new_ticket(callback: types.CallbackQuery, bot: Bot, sessio
     await update_ticket_status(session, ticket_id, "В работе")
     await bot.send_message(chat_id=ticket.tg_id, text=f"Ваша заявка №{ticket_id}\
  на продукт <strong>{ticket.product}</strong> взята в работу, ожидайте!")
-    await callback.message.edit_text(f"Заявка №{ticket_id} взята в работу")
+    await callback.message.edit_text(f"Заявка №{ticket_id} на продукт {ticket.product} взята в работу")
 
 ###################################################################################################
 

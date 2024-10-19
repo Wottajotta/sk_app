@@ -5,19 +5,18 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder
 from app.db.requests import (
     get_additionally_by_category,
     get_additionally_by_name,
+    get_contractors_by_region,
     get_products_by_series,
     get_regions,
     get_categories,
-    get_series,
-    get_products,
     get_series_by_categories,
 )
 
 
 async def add_more_or_continue():
     keyboard = ReplyKeyboardBuilder()
-    keyboard.add("Добавить ещё")
-    keyboard.add("Закончить")
+    keyboard.add(KeyboardButton(text="Добавить ещё"))
+    keyboard.add(KeyboardButton(text="Следующий шаг"))
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
 
 new_ticket = ReplyKeyboardMarkup(
@@ -50,6 +49,15 @@ async def region():
 
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
 
+async def contractors(region):
+    all_contractors = await get_contractors_by_region(region)
+    keyboard = ReplyKeyboardBuilder()
+
+    for contractor in all_contractors:
+        keyboard.add(KeyboardButton(text=contractor.name))
+    keyboard.add(KeyboardButton(text="Далее"))
+
+    return keyboard.adjust(2).as_markup(resize_keyboard=True)
 
 # Категории
 async def categories():
@@ -88,9 +96,9 @@ async def additionally_name(category):
     all_additionally = await get_additionally_by_category(category)
     keyboard = ReplyKeyboardBuilder()
 
-    keyboard.add(KeyboardButton(text="Далее"))
     for additionally in all_additionally:
         keyboard.add(KeyboardButton(text=additionally.name))
+    keyboard.add(KeyboardButton(text="Далее"))
 
     return keyboard.adjust(2).as_markup(resize_keyboard=True)
 

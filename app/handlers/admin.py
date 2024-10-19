@@ -10,6 +10,7 @@ from app.filters.chat_types import ChatTypeFilter, AdminProtect
 from app.db.requests import (
     add_additionally,
     add_region,
+    add_contractor,
     add_category,
     add_product,
     add_series,
@@ -56,6 +57,41 @@ async def back_to_panel(callback: types.CallbackQuery):
 
 
 ################################################################################################################################
+
+############################################ Добавление Контрагента ###########################################################
+class AddContractor(StatesGroup):
+    region = State()
+    name = State()
+
+@admin.callback_query(F.data == "add_contractor")
+async def add_contractor_handler(callback: types.CallbackQuery, state: FSMContext, session: AsyncSession):
+    await callback.answer()
+    await callback.message.answer(
+        "Выберите регион:", reply_markup=await reply.region()
+    )
+    await state.set_state(AddContractor.region)
+    
+@admin.message(AddContractor.region, F.text)
+async def add_contractor_region(message: types.Message, state: FSMContext, session: AsyncSession):
+    if message.text in [region.name for region in await get_regions()]:
+        await state.update_data(region=message.text)
+        await message.answer("Введите наименование Контрагента:")
+        await state.set_state(AddContractor.name)
+    else:
+        await message.answer(
+            "Вы ввели недопустимые данные, выберите регион, используя кнопки ниже!"
+        )
+
+@admin.message(AddContractor.name, F.text)
+async def add_contractor_name(message: types.Message, state: FSMContext, session: AsyncSession):
+    await state.update_data(name=message.text)
+    data = await state.get_data()
+    await add_contractor(session, data)
+    await message.answer(
+        f"Контрагент {data['name']} ({data['region']}) добавлен.",
+        reply_markup=await inline.back_to_menu_admin(),
+    )
+    await state.clear()
 
 ############################################ Добавление Админа ###########################################################
 

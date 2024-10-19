@@ -1,5 +1,5 @@
 from app.db.engine import async_session
-from app.db.models import User, Region, Category, Series, Additionally, Product, Ticket
+from app.db.models import Contractor, User, Region, Category, Series, Additionally, Product, Ticket
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 
@@ -31,6 +31,13 @@ async def add_region(session: AsyncSession, data: dict):
     session.add(obj)
     await session.commit()
 
+async def add_contractor(session: AsyncSession, data: dict):
+    obj = Contractor(
+        region=data["region"],
+        name=data["name"],
+    )
+    session.add(obj)
+    await session.commit()
 
 # Добавляем категорию в БД
 async def add_category(session: AsyncSession, data: dict):
@@ -109,14 +116,6 @@ async def get_admins(tg_id):
         return admin_users.all()
 
 
-
-async def del_admin(tg_id):
-    async with async_session() as session:
-        query = update(User).where(User.tg_id == int(tg_id)).values(is_admin="-")
-    await session.execute(query)
-    await session.commit()
-
-
 # Достаем регионы
 async def get_regions():
     async with async_session() as session:
@@ -127,6 +126,18 @@ async def get_regions_by_id(id):
     async with async_session() as session:
         return await session.scalar(select(Region).where(Region.id == int(id)))
 
+# Достаем контрагентов
+async def get_contractors():
+    async with async_session() as session:
+        return await session.scalars(select(Contractor))
+    
+async def get_contractors_region():
+    async with async_session() as session:
+        return await session.scalars(select(Contractor.region))   
+    
+async def get_contractors_by_region(region):
+    async with async_session() as session:
+        return await session.scalars(select(Contractor).where(Contractor.region == region))
 
 # Достаем категории
 async def get_categories():
@@ -213,11 +224,17 @@ async def create_ticket(session: AsyncSession, data: dict):
         status=data["status"],
         tg_id=data["user_id"],
         region=data["region"],
+        contractor=data["contractor"],
+        client=data["client"],
+        number=data["number"],
+        adress=data["adress"],
+        date=data["date"],
         category=data["category"],
         series=data["series"],
         product=data["product"],
-        additionally=data["additionally_value"],
         equipment=data["equipment"],
+        additionally=data["additionally_value"],
+        comment=data["comment"],
         not_exist=data["not_exist"],
         images=data["images"],
         documents=data["documents"],
@@ -319,7 +336,17 @@ async def add_finished_documents(session: AsyncSession, ticket_id, doc_id: str):
 
 
 ##################################### Удаление позиций ############################################
+async def del_admin(tg_id):
+    async with async_session() as session:
+        query = update(User).where(User.tg_id == int(tg_id)).values(is_admin="-")
+    await session.execute(query)
+    await session.commit()
 
+async def del_contractor(id):
+    async with async_session() as session:
+        query = delete(Contractor).where(Contractor.id == int(id))
+    await session.execute(query)
+    await session.commit()
 
 async def delete_region(session: AsyncSession, region_id):
     query = delete(Region).where(Region.id == int(region_id))

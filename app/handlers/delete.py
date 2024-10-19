@@ -1,6 +1,7 @@
 from aiogram import Bot, Router, F, types
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.requests import (
+    del_contractor,
     delete_additionally,
     delete_category,
     delete_product,
@@ -112,6 +113,22 @@ async def delete_product_handler(callback: types.CallbackQuery, session: AsyncSe
     await callback.answer()
     try:
         await delete_product(session, prodict_id)
+        await callback.message.answer("Успех ✅")
+        await callback.message.answer(f"Продукт удалён!")
+    except Exception as e:
+        await callback.message.answer("❌ Неудача")
+        await callback.message.answer(f"Ошибка {e}, попробуйте ещё раз!")
+
+
+########
+
+
+@delete.callback_query(F.data.startswith("delete-contractor_"))
+async def delete_contractor_handler(callback: types.CallbackQuery, session: AsyncSession):
+    contractor_id = callback.data.split("_")[-1]
+    await callback.answer()
+    try:
+        await del_contractor(contractor_id)
         await callback.message.answer("Успех ✅")
         await callback.message.answer(f"Продукт удалён!")
     except Exception as e:
